@@ -2,45 +2,67 @@ using UnityEngine;
 
 public class Enemy : MonoBehaviour
 {
+    public EnemySO data;
 
-    public float moveSpeed = 4f;
+    private int currentHealth;
+    // Expose damage from the ScriptableObject; fallback to 1 if data is missing
+    public int damage { get { return data != null ? data.damage : 1; } }
     private Rigidbody2D rb;
     private Vector2 movementDirection;
     private Transform target;
 
-    public int damage = 1;
-
     private void Awake()
-    { 
+    {
         rb = GetComponent<Rigidbody2D>();
     }
 
     void Start()
     {
-            GameObject playerObj = GameObject.Find("Player");
-            if (playerObj != null)
-                target = playerObj.transform;
+        if (data != null)
+        {
+            currentHealth = data.maxHealth;
+        }
+
+        GameObject playerObj = GameObject.Find("Player");
+        if (playerObj != null)
+            target = playerObj.transform;
     }
 
     // Update is called once per frame
     void Update()
     {
-        if (target == null) return; // Prevents errors if the player is destroyed
+        if (target == null || data == null) return; // Prevents errors if the player is destroyed
 
         Vector3 direction = (target.position - transform.position).normalized;
         movementDirection = direction;
-
-        // Optional: Rotate enemy to face the player
-        //float angle = Mathf.Atan2(direction.y, direction.x) * Mathf.Rad2Deg;
-        //rb.rotation = angle; // Adjust for sprite orientation
     }
 
     private void FixedUpdate()
     {
-        if (target)
+        if (target && data != null)
         {
-            rb.linearVelocity = new Vector2(movementDirection.x, movementDirection.y) * moveSpeed;
+            rb.linearVelocity = new Vector2(movementDirection.x, movementDirection.y) * data.moveSpeed;
         }
+    }
+
+    public void TakeDamage(int amount)
+    {
+        if (data == null) return;
+        currentHealth -= amount;
+        if (currentHealth <= 0) Die();
+    }
+
+    private void Die()
+    {
+        if (data != null && data.deathPrefab != null)
+        {
+            Instantiate(data.deathPrefab, transform.position, Quaternion.identity);
+        }
+        if (ScoreManager.Instance != null && data != null)
+        {
+            ScoreManager.Instance.AddScore(data.scoreValue);
+        }
+        Destroy(gameObject);
     }
 
 }

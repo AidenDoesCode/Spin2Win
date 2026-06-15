@@ -1,0 +1,23 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 77bf1a78b45b6c64e8dda7b868bccdbf, type: 3}
+  m_Name: Gun
+  m_EditorClassIdentifier: Assembly-CSharp::WeaponSO
+  weaponName: Gun
+  projectilePrefab: {fileID: 299504703514488645, guid: a99ca28d3f6c0a1408b87c52de3176be, type: 3}
+  projectileSpeed: 5
+  fireRadius: 0.6
+  fireRate: 5
+  isAutomatic: 1
+  icon: {fileID: 7943707647013513025, guid: 9bd0d901e76acd444839042539b358b5, type: 3}
+  visualPrefab: {fileID: 0}
+  damage: 1

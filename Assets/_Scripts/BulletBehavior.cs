@@ -4,6 +4,7 @@ using UnityEngine;
 public class BulletBehavior : MonoBehaviour
 {
     public float Speed = 5f;
+    public int Damage = 1;
     private Rigidbody2D rb;
     private Vector2 initialDir = Vector2.zero;
     private bool hasInitialDir = false;
@@ -55,6 +56,15 @@ public class BulletBehavior : MonoBehaviour
         if (arenaLayer >= 0 && other.gameObject.layer == arenaLayer) return;
         //if (other.CompareTag("Arena")) return;
 
+        // Damage enemies
+        var enemy = other.GetComponent<Enemy>();
+        if (enemy != null)
+        {
+            enemy.TakeDamage(Damage);
+            Destroy(gameObject);
+            return;
+        }
+
         Destroy(gameObject);
     }
 
@@ -67,6 +77,14 @@ public class BulletBehavior : MonoBehaviour
         int arenaLayer = LayerMask.NameToLayer("Arena");
         if (arenaLayer >= 0 && collision.collider.gameObject.layer == arenaLayer) return;
         //if (collision.collider.CompareTag("Arena")) return;
+
+        var enemy = collision.collider.GetComponent<Enemy>();
+        if (enemy != null)
+        {
+            enemy.TakeDamage(Damage);
+            Destroy(gameObject);
+            return;
+        }
 
         Destroy(gameObject);
     }
