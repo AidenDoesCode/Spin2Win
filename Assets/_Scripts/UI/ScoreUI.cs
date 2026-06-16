@@ -6,6 +6,9 @@ public class ScoreUI : MonoBehaviour
 {
     private TMP_Text scoreText;
 
+    [Tooltip("Number of digits to pad the score to (e.g. 5 -> 00010)")]
+    public int paddingDigits = 5;
+
     void Awake()
     {
         scoreText = GetComponent<TMP_Text>();
@@ -17,11 +20,11 @@ public class ScoreUI : MonoBehaviour
         {
             ScoreManager.Instance.ScoreChanged += OnScoreChanged;
             // initialize
-            scoreText.text = "Score: " + ScoreManager.Instance.Score.ToString();
+            scoreText.text = "Score: " + FormatScore(ScoreManager.Instance.Score);
         }
         else
         {
-            scoreText.text = "Score: 0";
+            scoreText.text = "Score: " + FormatScore(0);
         }
     }
 
@@ -33,6 +36,12 @@ public class ScoreUI : MonoBehaviour
 
     void OnScoreChanged(int newScore)
     {
-        scoreText.text = "Score: " + newScore.ToString();
+        scoreText.text = "Score: " + FormatScore(newScore);
+    }
+
+    private string FormatScore(int score)
+    {
+        int pd = Mathf.Max(1, paddingDigits);
+        return score.ToString().PadLeft(pd, ' ');
     }
 }
