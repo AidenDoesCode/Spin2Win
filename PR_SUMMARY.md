@@ -37,6 +37,9 @@ Known issues / TODO
 - Reward/upgrade selection UI not implemented yet (suggested next task).
 - Enemy AI is simple direct-chase; can be expanded to include targeting base/defendable objects.
 - Some initialization order fallbacks and reconciliation checks were added to handle lifecycle issues; consider simplifying once scene wiring is stable.
+- Add simple menu and some sound effects
+- Boss waves
+- Brainstrom upgrades/refine game idea more
 
 Testing steps
 1. Open the scene and ensure the objects listed in Scene wiring exist and are assigned.
