@@ -10,7 +10,7 @@ public class HealthUI : MonoBehaviour
 
     private List<Image> hearts = new List<Image>();
 
-    public void setMaxHearts(int maxHearts)
+    public void SetMaxHearts(int maxHearts)
     {
         foreach (Image heart in hearts)
         {
@@ -26,7 +26,6 @@ public class HealthUI : MonoBehaviour
             newHeart.color = Color.red;
             hearts.Add(newHeart);
         }
-
     }
 
     public void UpdateHearts(int currentHealth)
@@ -45,6 +44,4 @@ public class HealthUI : MonoBehaviour
             }
         }
     }
-
-
 }

@@ -5,13 +5,11 @@ public class Enemy : MonoBehaviour
     public EnemySO data;
 
     private int currentHealth;
-    // Multipliers applied per-round (can be set by RoundManager on spawn)
     [HideInInspector] public float healthMultiplier = 1f;
     [HideInInspector] public float speedMultiplier = 1f;
     [HideInInspector] public float damageMultiplier = 1f;
 
-    // Expose damage from the ScriptableObject, with round-based multiplier; fallback to 1 if data is missing
-    public int damage { get { return data != null ? Mathf.CeilToInt(data.damage * damageMultiplier) : 1; } }
+    public int damage => data != null ? Mathf.CeilToInt(data.damage * damageMultiplier) : 1;
     private Rigidbody2D rb;
     private Vector2 movementDirection;
     private Transform target;
@@ -21,7 +19,7 @@ public class Enemy : MonoBehaviour
         rb = GetComponent<Rigidbody2D>();
     }
 
-    void Start()
+    private void Start()
     {
         if (data != null)
         {
@@ -29,31 +27,26 @@ public class Enemy : MonoBehaviour
         }
 
         GameObject playerObj = GameObject.Find("Player");
-        if (playerObj != null)
-            target = playerObj.transform;
+        target = playerObj != null ? playerObj.transform : null;
     }
 
-    // Update is called once per frame
-    void Update()
+    private void Update()
     {
-        if (target == null || data == null) return; // Prevents errors if the player is destroyed
-
-        // Only compute movement direction; actual movement in FixedUpdate will respect phase.
-        Vector3 direction = (target.position - transform.position).normalized;
-        movementDirection = direction;
+        if (target == null || data == null) return;
+        movementDirection = (target.position - transform.position).normalized;
     }
 
     private void FixedUpdate()
     {
-        // Only move when TurnManager is in Enemies phase (so enemies don't act during player planning)
-        if (TurnManager.Instance != null)
+        var turnManager = TurnManager.Instance;
+        if (turnManager != null)
         {
-            if (TurnManager.Instance.CurrentPhase != TurnManager.Phase.Enemies) return;
+            if (turnManager.CurrentPhase != TurnManager.Phase.Enemies) return;
         }
 
         if (target && data != null)
         {
-            rb.linearVelocity = new Vector2(movementDirection.x, movementDirection.y) * (data.moveSpeed * speedMultiplier);
+            rb.linearVelocity = movementDirection * (data.moveSpeed * speedMultiplier);
         }
     }
 
@@ -74,14 +67,12 @@ public class Enemy : MonoBehaviour
         {
             ScoreManager.Instance.AddScore(data.scoreValue);
         }
-        // notify round manager before destroying so it can update counts
         if (RoundManager.Instance != null)
         {
             RoundManager.Instance.OnEnemyKilled(this);
         }
         else
         {
-            // fallback: try to find a RoundManager in scene (handles execution order issues)
             var rm = Object.FindAnyObjectByType<RoundManager>();
             if (rm != null)
             {
@@ -94,5 +85,4 @@ public class Enemy : MonoBehaviour
         }
         Destroy(gameObject);
     }
-
 }

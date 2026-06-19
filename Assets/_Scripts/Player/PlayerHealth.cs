@@ -1,5 +1,4 @@
-using System;
-using System.Collections; // Required for Coroutines
+using System.Collections;
 using UnityEngine;
 
 public class PlayerHealth : MonoBehaviour
@@ -16,7 +15,7 @@ public class PlayerHealth : MonoBehaviour
     void Start()
     {
         currentHealth = maxHealth;
-        healthUI.setMaxHearts(maxHealth);
+        healthUI.SetMaxHearts(maxHealth);
     }
 
     private void OnTriggerEnter2D(Collider2D collision)
@@ -33,18 +32,15 @@ public class PlayerHealth : MonoBehaviour
 
     private void TakeDamage(int damage)
     {
-        // Fix: Use -= instead of = so health actually decreases
         currentHealth -= damage;
         healthUI.UpdateHearts(currentHealth);
 
         if (currentHealth <= 0)
         {
             Debug.Log("Player has died.");
-            //Die();
         }
         else
         {
-            // Start the invulnerability timer if the player survived
             StartCoroutine(InvulnerabilityCoroutine());
         }
     }

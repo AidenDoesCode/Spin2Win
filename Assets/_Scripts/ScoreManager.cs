@@ -14,9 +14,10 @@ public class ScoreManager : MonoBehaviour
         if (Instance == null)
         {
             Instance = this;
-            // Make sure this GameObject is a root object before marking it DontDestroyOnLoad
             if (transform.parent != null)
+            {
                 transform.SetParent(null);
+            }
             DontDestroyOnLoad(gameObject);
         }
         else

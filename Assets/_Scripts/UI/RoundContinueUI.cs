@@ -7,14 +7,13 @@ public class RoundContinueUI : MonoBehaviour
     public GameObject panel;
 
     private Button continueButton;
+    private RoundManager subscribedRoundManager;
 
     void Awake()
     {
-        // If no panel assigned, default to this GameObject
         if (panel == null)
-            panel = this.gameObject;
+            panel = gameObject;
 
-        // If the panel is specified, try to find the Button component on it
         if (panel != null)
         {
             continueButton = panel.GetComponent<Button>();
@@ -24,24 +23,20 @@ public class RoundContinueUI : MonoBehaviour
 
     void Start()
     {
-        // Subscribe to RoundManager, try Instance first, otherwise find in scene
-        if (RoundManager.Instance != null)
+        subscribedRoundManager = RoundManager.Instance;
+        if (subscribedRoundManager == null)
         {
-            RoundManager.Instance.RoundUpdated += OnRoundUpdated;
-            Debug.Log("RoundContinueUI: Subscribed to RoundManager.Instance.RoundUpdated");
+            subscribedRoundManager = FindAnyObjectByType<RoundManager>();
+        }
+
+        if (subscribedRoundManager != null)
+        {
+            subscribedRoundManager.RoundUpdated += OnRoundUpdated;
+            Debug.Log("RoundContinueUI: Subscribed to RoundManager.RoundUpdated");
         }
         else
         {
-            var rm = FindAnyObjectByType<RoundManager>();
-            if (rm != null)
-            {
-                rm.RoundUpdated += OnRoundUpdated;
-                Debug.Log("RoundContinueUI: Subscribed to RoundManager found in scene.");
-            }
-            else
-            {
-                Debug.LogWarning("RoundContinueUI: No RoundManager found to subscribe to RoundUpdated.");
-            }
+            Debug.LogWarning("RoundContinueUI: No RoundManager found to subscribe to RoundUpdated.");
         }
 
         if (continueButton != null)
@@ -50,8 +45,8 @@ public class RoundContinueUI : MonoBehaviour
 
     void OnDestroy()
     {
-        if (RoundManager.Instance != null)
-            RoundManager.Instance.RoundUpdated -= OnRoundUpdated;
+        if (subscribedRoundManager != null)
+            subscribedRoundManager.RoundUpdated -= OnRoundUpdated;
 
         if (continueButton != null)
             continueButton.onClick.RemoveListener(OnContinueClicked);
@@ -59,7 +54,7 @@ public class RoundContinueUI : MonoBehaviour
 
     private void OnRoundUpdated(int round, int enemiesRemaining)
     {
-        bool roundFinished = (enemiesRemaining == 0) && (RoundManager.Instance != null && !RoundManager.Instance.IsRoundActive());
+        bool roundFinished = enemiesRemaining == 0 && subscribedRoundManager != null && !subscribedRoundManager.IsRoundActive();
         if (panel != null)
         {
             panel.SetActive(roundFinished);
@@ -70,7 +65,7 @@ public class RoundContinueUI : MonoBehaviour
 
     private void OnContinueClicked()
     {
-        RoundManager.Instance?.ContinueToNextRound();
+        subscribedRoundManager?.ContinueToNextRound();
         if (panel != null)
             panel.SetActive(false);
     }

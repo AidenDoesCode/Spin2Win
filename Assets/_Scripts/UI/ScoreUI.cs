@@ -19,7 +19,6 @@ public class ScoreUI : MonoBehaviour
         if (ScoreManager.Instance != null)
         {
             ScoreManager.Instance.ScoreChanged += OnScoreChanged;
-            // initialize
             scoreText.text = "Score: " + FormatScore(ScoreManager.Instance.Score);
         }
         else

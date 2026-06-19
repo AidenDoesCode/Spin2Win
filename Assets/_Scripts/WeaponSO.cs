@@ -7,7 +7,8 @@ public class WeaponSO : ScriptableObject
     public BulletBehavior projectilePrefab;
     public float projectileSpeed = 5f;
     public float fireRadius = 0.6f;
-    public float fireRate = 5f; // shots per second
+    [Tooltip("Shots per second.")]
+    public float fireRate = 5f;
     public bool isAutomatic = true;
     public Sprite icon;
     public GameObject visualPrefab;

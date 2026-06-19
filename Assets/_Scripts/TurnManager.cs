@@ -32,11 +32,9 @@ public class TurnManager : MonoBehaviour
 
     void Start()
     {
-        // start in Player phase waiting for player input
         SetPhase(Phase.Player);
         if (autoAdvanceOnStart)
         {
-            // automatically progress one turn so enemies will act immediately
             EndPlayerTurn();
         }
     }
@@ -47,7 +45,6 @@ public class TurnManager : MonoBehaviour
         PhaseChanged?.Invoke(p);
     }
 
-    // Called by player UI when they finish their actions for the turn
     public void EndPlayerTurn()
     {
         if (turnRoutine != null) StopCoroutine(turnRoutine);
@@ -56,18 +53,14 @@ public class TurnManager : MonoBehaviour
 
     private IEnumerator TurnSequence()
     {
-        // Allies phase
         SetPhase(Phase.Allies);
         yield return new WaitForSeconds(alliesPhaseDuration);
 
-        // Enemies phase
         SetPhase(Phase.Enemies);
         yield return new WaitForSeconds(enemiesPhaseDuration);
 
-        // End of turn, allow reward/cleanup
         SetPhase(Phase.EndOfTurn);
 
-        // Return to player phase
         SetPhase(Phase.Player);
         turnRoutine = null;
     }

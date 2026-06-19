@@ -6,7 +6,7 @@ public class SpawnManager : MonoBehaviour
 {
     [Header("Spawn Settings")]
     public GameObject enemyPrefab;
-    public BoxCollider2D arenaCollider; // defines spawn bounds
+    public BoxCollider2D arenaCollider;
 
     [Tooltip("Minimum distance from any player to spawn")]
     public float minDistanceFromPlayer = 3f;
@@ -29,9 +29,9 @@ public class SpawnManager : MonoBehaviour
     [Tooltip("If empty, the script will try to find objects tagged 'Player'")]
     public Transform[] players;
 
-    void Start()
+    private void Start()
     {
-        if ((players == null || players.Length == 0))
+        if (players == null || players.Length == 0)
         {
             var playerObjs = GameObject.FindGameObjectsWithTag("Player");
             if (playerObjs != null && playerObjs.Length > 0)
@@ -54,7 +54,6 @@ public class SpawnManager : MonoBehaviour
         }
     }
 
-    // Attempts to spawn one enemy inside the arena. Returns the spawned GameObject or null if failed.
     public GameObject TrySpawnRandom()
     {
         if (enemyPrefab == null || arenaCollider == null) return null;
@@ -67,21 +66,16 @@ public class SpawnManager : MonoBehaviour
             float y = Random.Range(bounds.min.y, bounds.max.y);
             Vector2 candidate = new Vector2(x, y);
 
-            // ensure a margin so spawn isn't exactly on the box edge
             if (!IsPointInsideCollider(arenaCollider, candidate)) continue;
 
-            // check distance to players
             if (IsTooCloseToPlayers(candidate)) continue;
 
-            // check overlap with obstacles
             if (Physics2D.OverlapCircle(candidate, clearRadius, obstacleMask) != null) continue;
 
-            // passed checks: spawn
             var go = Instantiate(enemyPrefab, candidate, Quaternion.identity);
             return go;
         }
 
-        // failed to find valid spot
         return null;
     }
 
@@ -96,15 +90,12 @@ public class SpawnManager : MonoBehaviour
         return false;
     }
 
-    // Uses Collider2D.OverlapPoint-like check for BoxCollider2D
     private bool IsPointInsideCollider(BoxCollider2D box, Vector2 point)
     {
         if (box == null) return false;
-        // bounds check is sufficient for axis-aligned box
         return box.bounds.Contains(point);
     }
 
-    // Helper to spawn multiple
     public int SpawnMultiple(int count)
     {
         int spawned = 0;

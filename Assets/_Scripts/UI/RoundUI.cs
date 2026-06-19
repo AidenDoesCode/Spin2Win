@@ -23,7 +23,6 @@ public class RoundUI : MonoBehaviour
         if (roundManager != null)
         {
             roundManager.RoundUpdated += OnRoundUpdated;
-            // initialize
             text.text = FormatText(roundManager.CurrentRound, roundManager.EnemiesRemaining);
         }
         else

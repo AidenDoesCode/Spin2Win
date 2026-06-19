@@ -1,6 +1,5 @@
 using System;
 using System.Collections;
-using Unity.Burst.CompilerServices;
 using UnityEngine;
 
 public class RoundManager : MonoBehaviour
@@ -28,11 +27,9 @@ public class RoundManager : MonoBehaviour
     public int CurrentRound { get; private set; }
     public int EnemiesRemaining { get; private set; }
 
-    // Event: (currentRound, enemiesRemaining)
     public event Action<int,int> RoundUpdated;
 
     private bool roundActive = false;
-    // When a round completes, wait for player confirmation to continue
     private bool waitingForPlayerContinue = false;
 
     void Awake()
@@ -43,24 +40,20 @@ public class RoundManager : MonoBehaviour
 
     void Start()
     {
-        CurrentRound = startingRound - 1; // StartRound will increment
+        CurrentRound = startingRound - 1;
         StartCoroutine(RoundLoop());
     }
 
-    // Main loop: start a round, wait for it to finish, then wait before starting next
     private IEnumerator RoundLoop()
     {
         while (true)
         {
             yield return StartCoroutine(StartRound());
-            // round finished - wait for player to continue
             waitingForPlayerContinue = true;
-            // Optionally show UI here via event
             while (waitingForPlayerContinue)
             {
                 yield return null;
             }
-            // small delay before starting next
             yield return new WaitForSeconds(timeBetweenRounds);
         }
     }
@@ -82,13 +75,11 @@ public class RoundManager : MonoBehaviour
             yield break;
         }
 
-        // spawn enemies with scaling
         for (int i = 0; i < toSpawn; i++)
         {
             var go = spawner.TrySpawnRandom();
             if (go == null)
             {
-                // failed to spawn this one; skip
                 yield return new WaitForSeconds(0.05f);
                 continue;
             }
@@ -106,11 +97,9 @@ public class RoundManager : MonoBehaviour
             RoundUpdated?.Invoke(CurrentRound, EnemiesRemaining);
             Debug.Log($"RoundManager: Spawned enemy (round {CurrentRound}) -> EnemiesRemaining={EnemiesRemaining}");
 
-            // small stagger between spawns so they don't all overlap
             yield return new WaitForSeconds(0.1f);
         }
 
-        // Optionally auto-start the enemies' phase by ending the player turn so enemies will act immediately
         if (autoStartEnemyPhaseAfterSpawn)
         {
             if (TurnManager.Instance != null)
@@ -124,12 +113,8 @@ public class RoundManager : MonoBehaviour
             }
         }
 
-        // Wait until enemies are cleared.
-        // Also periodically reconcile with actual Enemy objects in the scene in case notifications were missed.
         while (EnemiesRemaining > 0)
         {
-            // every 0.2s check actual enemies
-            // Use the newer API overload without deprecated sort mode parameter
             int actual = UnityEngine.Object.FindObjectsByType<Enemy>().Length;
             if (actual != EnemiesRemaining)
             {
@@ -145,10 +130,8 @@ public class RoundManager : MonoBehaviour
         roundActive = false;
         Debug.Log($"RoundManager: Round {CurrentRound} finished; waitingForPlayerContinue={waitingForPlayerContinue}");
         RoundUpdated?.Invoke(CurrentRound, EnemiesRemaining);
-        yield break;
     }
 
-    // Called by UI when player wants to start the next round
     public void ContinueToNextRound()
     {
         if (waitingForPlayerContinue)
@@ -157,7 +140,6 @@ public class RoundManager : MonoBehaviour
         }
     }
 
-    // Called by Enemy when it dies
     public void OnEnemyKilled(Enemy enemy)
     {
         EnemiesRemaining = Mathf.Max(0, EnemiesRemaining - 1);
@@ -165,6 +147,5 @@ public class RoundManager : MonoBehaviour
         Debug.Log($"RoundManager: OnEnemyKilled -> EnemiesRemaining={EnemiesRemaining}");
     }
 
-    // Query whether a round is in progress
     public bool IsRoundActive() => roundActive;
 }
