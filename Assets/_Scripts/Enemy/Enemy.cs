@@ -13,6 +13,8 @@ public class Enemy : MonoBehaviour
     private Rigidbody2D rb;
     private Vector2 movementDirection;
     private Transform target;
+    private BaseHealth targetBase;
+    private float nextAttackTime;
 
     private void Awake()
     {
@@ -26,13 +28,50 @@ public class Enemy : MonoBehaviour
             currentHealth = Mathf.Max(1, Mathf.RoundToInt(data.maxHealth * healthMultiplier));
         }
 
-        GameObject playerObj = GameObject.Find("Player");
-        target = playerObj != null ? playerObj.transform : null;
+        targetBase = BaseHealth.Instance != null ? BaseHealth.Instance : FindAnyObjectByType<BaseHealth>();
+
+        if (targetBase != null)
+        {
+            target = targetBase.transform;
+        }
+        else
+        {
+            GameObject playerObj = GameObject.Find("Player");
+            target = playerObj != null ? playerObj.transform : null;
+        }
     }
 
     private void Update()
     {
-        if (target == null || data == null) return;
+        if (data == null) return;
+
+        if (targetBase != null)
+        {
+            if (targetBase.IsDead)
+            {
+                movementDirection = Vector2.zero;
+                return;
+            }
+
+            Vector2 toBase = (targetBase.transform.position - transform.position);
+            float distanceToBase = toBase.magnitude;
+
+            if (distanceToBase <= data.attackRange)
+            {
+                movementDirection = Vector2.zero;
+                if (Time.time >= nextAttackTime)
+                {
+                    targetBase.TakeDamage(damage);
+                    nextAttackTime = Time.time + Mathf.Max(0.05f, data.attackCooldown);
+                }
+                return;
+            }
+
+            movementDirection = toBase.normalized;
+            return;
+        }
+
+        if (target == null) return;
         movementDirection = (target.position - transform.position).normalized;
     }
 
@@ -42,6 +81,12 @@ public class Enemy : MonoBehaviour
         if (turnManager != null)
         {
             if (turnManager.CurrentPhase != TurnManager.Phase.Enemies) return;
+        }
+
+        if (targetBase != null && targetBase.IsDead)
+        {
+            rb.linearVelocity = Vector2.zero;
+            return;
         }
 
         if (target && data != null)

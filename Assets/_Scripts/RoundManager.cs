@@ -27,10 +27,13 @@ public class RoundManager : MonoBehaviour
     public int CurrentRound { get; private set; }
     public int EnemiesRemaining { get; private set; }
 
+    public event Action<int> RoundStarted;
+    public event Action<int> RoundFinished;
     public event Action<int,int> RoundUpdated;
 
     private bool roundActive = false;
     private bool waitingForPlayerContinue = false;
+    private int bonusEnemiesNextRound = 0;
 
     void Awake()
     {
@@ -48,10 +51,20 @@ public class RoundManager : MonoBehaviour
     {
         while (true)
         {
+            if (BaseHealth.Instance != null && BaseHealth.Instance.IsDead)
+                yield break;
+
             yield return StartCoroutine(StartRound());
+
+            if (BaseHealth.Instance != null && BaseHealth.Instance.IsDead)
+                yield break;
+
             waitingForPlayerContinue = true;
             while (waitingForPlayerContinue)
             {
+                if (BaseHealth.Instance != null && BaseHealth.Instance.IsDead)
+                    yield break;
+
                 yield return null;
             }
             yield return new WaitForSeconds(timeBetweenRounds);
@@ -61,43 +74,45 @@ public class RoundManager : MonoBehaviour
     private IEnumerator StartRound()
     {
         CurrentRound++;
-        RoundUpdated?.Invoke(CurrentRound, EnemiesRemaining);
         roundActive = true;
+        RoundStarted?.Invoke(CurrentRound);
         Debug.Log($"RoundManager: Starting round {CurrentRound}");
 
-        int toSpawn = Mathf.CeilToInt(enemiesBasePerRound + (CurrentRound - 1) * 1.5f);
+        int toSpawn = Mathf.CeilToInt(enemiesBasePerRound + (CurrentRound - 1) * 1.5f) + bonusEnemiesNextRound;
+        bonusEnemiesNextRound = 0;
         EnemiesRemaining = 0;
         RoundUpdated?.Invoke(CurrentRound, EnemiesRemaining);
 
         if (spawner == null)
         {
             Debug.LogWarning("RoundManager: SpawnManager reference not set. No enemies will be spawned.");
-            yield break;
         }
-
-        for (int i = 0; i < toSpawn; i++)
+        else
         {
-            var go = spawner.TrySpawnRandom();
-            if (go == null)
+            for (int i = 0; i < toSpawn; i++)
             {
-                yield return new WaitForSeconds(0.05f);
-                continue;
+                var go = spawner.TrySpawnRandom();
+                if (go == null)
+                {
+                    yield return new WaitForSeconds(0.05f);
+                    continue;
+                }
+
+                var enemy = go.GetComponent<Enemy>();
+                if (enemy != null)
+                {
+                    float roundHealthMult = Mathf.Pow(healthMultiplierPerRound, CurrentRound - 1);
+                    enemy.healthMultiplier = roundHealthMult;
+                    enemy.speedMultiplier = 1f + speedMultiplierPerRound * (CurrentRound - 1);
+                    enemy.damageMultiplier = 1f + damageMultiplierPerRound * (CurrentRound - 1);
+                }
+
+                EnemiesRemaining++;
+                RoundUpdated?.Invoke(CurrentRound, EnemiesRemaining);
+                Debug.Log($"RoundManager: Spawned enemy (round {CurrentRound}) -> EnemiesRemaining={EnemiesRemaining}");
+
+                yield return new WaitForSeconds(0.1f);
             }
-
-            var enemy = go.GetComponent<Enemy>();
-            if (enemy != null)
-            {
-                float roundHealthMult = Mathf.Pow(healthMultiplierPerRound, CurrentRound - 1);
-                enemy.healthMultiplier = roundHealthMult;
-                enemy.speedMultiplier = 1f + speedMultiplierPerRound * (CurrentRound - 1);
-                enemy.damageMultiplier = 1f + damageMultiplierPerRound * (CurrentRound - 1);
-            }
-
-            EnemiesRemaining++;
-            RoundUpdated?.Invoke(CurrentRound, EnemiesRemaining);
-            Debug.Log($"RoundManager: Spawned enemy (round {CurrentRound}) -> EnemiesRemaining={EnemiesRemaining}");
-
-            yield return new WaitForSeconds(0.1f);
         }
 
         if (autoStartEnemyPhaseAfterSpawn)
@@ -115,6 +130,9 @@ public class RoundManager : MonoBehaviour
 
         while (EnemiesRemaining > 0)
         {
+            if (BaseHealth.Instance != null && BaseHealth.Instance.IsDead)
+                yield break;
+
             int actual = UnityEngine.Object.FindObjectsByType<Enemy>().Length;
             if (actual != EnemiesRemaining)
             {
@@ -128,8 +146,14 @@ public class RoundManager : MonoBehaviour
         }
 
         roundActive = false;
+        RoundFinished?.Invoke(CurrentRound);
         Debug.Log($"RoundManager: Round {CurrentRound} finished; waitingForPlayerContinue={waitingForPlayerContinue}");
         RoundUpdated?.Invoke(CurrentRound, EnemiesRemaining);
+    }
+
+    public void AddBonusEnemies(int amount)
+    {
+        bonusEnemiesNextRound = Mathf.Max(0, bonusEnemiesNextRound + amount);
     }
 
     public void ContinueToNextRound()

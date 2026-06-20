@@ -1,4 +1,5 @@
-﻿using UnityEngine;
+﻿using System.Collections;
+using UnityEngine;
 using UnityEngine.InputSystem;
 
 public class PlayerController : MonoBehaviour
@@ -24,6 +25,10 @@ public class PlayerController : MonoBehaviour
     [SerializeField] private float fireRate = 5f;
     private float nextFireTime = 0f;
     private bool isHoldingAttack = false;
+
+    private float runtimeFireRateMultiplier = 1f;
+    private int runtimeBonusDamage = 0;
+    private float runtimeMovementSpeedMultiplier = 1f;
 
     private Vector2 movementDirection;
     private Collider2D playerCollider;
@@ -111,12 +116,44 @@ public class PlayerController : MonoBehaviour
 
     private void FixedUpdate()
     {
-        rb.linearVelocity = movementDirection * movementSpeed;
+        rb.linearVelocity = movementDirection * movementSpeed * runtimeMovementSpeedMultiplier;
+    }
+
+    public void ApplyFireRateMultiplier(float multiplier, float duration)
+    {
+        StartCoroutine(TemporaryFloatMultiplierRoutine(multiplier, duration, value => runtimeFireRateMultiplier = value));
+    }
+
+    public void AddBonusDamage(int amount, float duration)
+    {
+        StartCoroutine(TemporaryIntBonusRoutine(amount, duration, value => runtimeBonusDamage = value));
+    }
+
+    public void ApplyMovementSpeedMultiplier(float multiplier, float duration)
+    {
+        StartCoroutine(TemporaryFloatMultiplierRoutine(multiplier, duration, value => runtimeMovementSpeedMultiplier = value));
+    }
+
+    private IEnumerator TemporaryFloatMultiplierRoutine(float multiplier, float duration, System.Action<float> applyValue)
+    {
+        applyValue(Mathf.Max(0.01f, multiplier));
+        if (duration > 0f)
+            yield return new WaitForSeconds(duration);
+        applyValue(1f);
+    }
+
+    private IEnumerator TemporaryIntBonusRoutine(int amount, float duration, System.Action<int> applyValue)
+    {
+        applyValue(amount);
+        if (duration > 0f)
+            yield return new WaitForSeconds(duration);
+        applyValue(0);
     }
 
     private void SpawnProjectileAtMouse()
     {
         float useFireRate = currentWeapon != null ? currentWeapon.fireRate : fireRate;
+        useFireRate *= runtimeFireRateMultiplier;
         if (useFireRate <= 0f) return; // firing disabled
         if (Time.time < nextFireTime) return;
         nextFireTime = Time.time + (1f / Mathf.Max(0.0001f, useFireRate));
@@ -145,7 +182,7 @@ public class PlayerController : MonoBehaviour
                 projRb.gravityScale = 0f;
                 proj.Speed = currentWeapon.projectileSpeed;
                 proj.SetDirection((Vector2)firePoint.up);
-                proj.Damage = currentWeapon.damage;
+                proj.Damage = currentWeapon.damage + runtimeBonusDamage;
             }
         }
     }
