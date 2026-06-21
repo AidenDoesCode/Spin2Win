@@ -33,6 +33,7 @@ public class RoundContinueUI : MonoBehaviour
         {
             subscribedRoundManager.RoundUpdated += OnRoundUpdated;
             Debug.Log("RoundContinueUI: Subscribed to RoundManager.RoundUpdated");
+            OnRoundUpdated(subscribedRoundManager.CurrentRound, subscribedRoundManager.EnemiesRemaining);
         }
         else
         {

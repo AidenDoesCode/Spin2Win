@@ -6,6 +6,7 @@ public class BaseHealth : MonoBehaviour
     public static BaseHealth Instance { get; private set; }
 
     [Min(1)] public int maxHealth = 20;
+    [Min(0f)] public float damageRadius = 0.75f;
     public int CurrentHealth { get; private set; }
     public bool IsDead { get; private set; }
 

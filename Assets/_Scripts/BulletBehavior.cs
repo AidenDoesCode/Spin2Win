@@ -51,21 +51,17 @@ public class BulletBehavior : MonoBehaviour
         if (other == null) return;
         // Ignore other projectiles
         if (other.GetComponent<BulletBehavior>() != null) return;
-        // Ignore arena collisions: by layer name or by tag if you prefer
+        // Ignore arena collisions
         int arenaLayer = LayerMask.NameToLayer("Arena");
         if (arenaLayer >= 0 && other.gameObject.layer == arenaLayer) return;
-        //if (other.CompareTag("Arena")) return;
 
-        // Damage enemies
+        // Only interact with enemies — ignore everything else
         var enemy = other.GetComponent<Enemy>();
         if (enemy != null)
         {
             enemy.TakeDamage(Damage);
             Destroy(gameObject);
-            return;
         }
-
-        Destroy(gameObject);
     }
 
     private void OnCollisionEnter2D(Collision2D collision)
@@ -73,19 +69,16 @@ public class BulletBehavior : MonoBehaviour
         if (collision == null || collision.collider == null) return;
         // Ignore other projectiles
         if (collision.collider.GetComponent<BulletBehavior>() != null) return;
-        // Ignore arena collisions: by layer name or by tag if you prefer
+        // Ignore arena collisions
         int arenaLayer = LayerMask.NameToLayer("Arena");
         if (arenaLayer >= 0 && collision.collider.gameObject.layer == arenaLayer) return;
-        //if (collision.collider.CompareTag("Arena")) return;
 
+        // Only interact with enemies — ignore everything else
         var enemy = collision.collider.GetComponent<Enemy>();
         if (enemy != null)
         {
             enemy.TakeDamage(Damage);
             Destroy(gameObject);
-            return;
         }
-
-        Destroy(gameObject);
     }
 }

@@ -55,8 +55,9 @@ public class Enemy : MonoBehaviour
 
             Vector2 toBase = (targetBase.transform.position - transform.position);
             float distanceToBase = toBase.magnitude;
+            float damageRadius = Mathf.Max(0f, targetBase.damageRadius);
 
-            if (distanceToBase <= data.attackRange)
+            if (distanceToBase <= damageRadius)
             {
                 movementDirection = Vector2.zero;
                 if (Time.time >= nextAttackTime)

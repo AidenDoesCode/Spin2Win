@@ -5,7 +5,9 @@ public class ScoreManager : MonoBehaviour
 {
     public static ScoreManager Instance { get; private set; }
 
-    public int Score { get; private set; }
+    [SerializeField] private int score;
+
+    public int Score => score;
 
     public event Action<int> ScoreChanged;
 
@@ -28,7 +30,7 @@ public class ScoreManager : MonoBehaviour
 
     public void AddScore(int amount)
     {
-        Score += amount;
+        score += amount;
         ScoreChanged?.Invoke(Score);
     }
 
@@ -37,17 +39,39 @@ public class ScoreManager : MonoBehaviour
         if (amount <= 0)
             return true;
 
-        if (Score < amount)
+        if (score < amount)
             return false;
 
-        Score -= amount;
+        score -= amount;
         ScoreChanged?.Invoke(Score);
         return true;
     }
 
     public void ResetScore()
     {
-        Score = 0;
+        score = 0;
         ScoreChanged?.Invoke(Score);
+    }
+
+    public void SetScore(int amount)
+    {
+        score = Mathf.Max(0, amount);
+        ScoreChanged?.Invoke(Score);
+    }
+
+    public void AddToScore(int amount)
+    {
+        if (amount == 0)
+            return;
+
+        SetScore(score + amount);
+    }
+
+    private void OnValidate()
+    {
+        score = Mathf.Max(0, score);
+
+        if (Application.isPlaying)
+            ScoreChanged?.Invoke(score);
     }
 }

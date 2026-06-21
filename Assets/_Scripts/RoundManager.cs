@@ -44,6 +44,8 @@ public class RoundManager : MonoBehaviour
     void Start()
     {
         CurrentRound = startingRound - 1;
+        waitingForPlayerContinue = true;
+        RoundUpdated?.Invoke(CurrentRound, EnemiesRemaining);
         StartCoroutine(RoundLoop());
     }
 
@@ -54,12 +56,21 @@ public class RoundManager : MonoBehaviour
             if (BaseHealth.Instance != null && BaseHealth.Instance.IsDead)
                 yield break;
 
+            while (waitingForPlayerContinue)
+            {
+                if (BaseHealth.Instance != null && BaseHealth.Instance.IsDead)
+                    yield break;
+
+                yield return null;
+            }
+
             yield return StartCoroutine(StartRound());
 
             if (BaseHealth.Instance != null && BaseHealth.Instance.IsDead)
                 yield break;
 
             waitingForPlayerContinue = true;
+            RoundUpdated?.Invoke(CurrentRound, EnemiesRemaining);
             while (waitingForPlayerContinue)
             {
                 if (BaseHealth.Instance != null && BaseHealth.Instance.IsDead)
@@ -161,6 +172,7 @@ public class RoundManager : MonoBehaviour
         if (waitingForPlayerContinue)
         {
             waitingForPlayerContinue = false;
+            RoundUpdated?.Invoke(CurrentRound, EnemiesRemaining);
         }
     }
 
