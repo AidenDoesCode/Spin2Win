@@ -24,29 +24,20 @@ public class SpinFortRunManager : MonoBehaviour
 
     private void Start()
     {
-        if (roundManager == null)
-            roundManager = FindAnyObjectByType<RoundManager>();
-
-        if (playerController == null)
-            playerController = FindAnyObjectByType<PlayerController>();
-
-        if (playerHealth == null)
-            playerHealth = FindAnyObjectByType<PlayerHealth>();
-
-        if (roundManager != null)
-            roundManager.RoundFinished += HandleRoundFinished;
+        if (roundManager == null) roundManager = FindAnyObjectByType<RoundManager>();
+        if (playerController == null) playerController = FindAnyObjectByType<PlayerController>();
+        if (playerHealth == null) playerHealth = FindAnyObjectByType<PlayerHealth>();
+        if (roundManager != null) roundManager.RoundFinished += HandleRoundFinished;
     }
 
     private void OnDestroy()
     {
-        if (roundManager != null)
-            roundManager.RoundFinished -= HandleRoundFinished;
+        if (roundManager != null) roundManager.RoundFinished -= HandleRoundFinished;
     }
 
     private void HandleRoundFinished(int round)
     {
-        if (autoSpinOnRoundComplete)
-            SpinWheel();
+        if (autoSpinOnRoundComplete) SpinWheel();
     }
 
     public void SpinWheel()
@@ -58,8 +49,7 @@ public class SpinFortRunManager : MonoBehaviour
         }
 
         var result = wheelDefinition.Roll();
-        if (result == null)
-            return;
+        if (result == null) return;
 
         ApplyResult(result);
         SpinCompleted?.Invoke(result);
@@ -71,33 +61,26 @@ public class SpinFortRunManager : MonoBehaviour
         switch (result.rewardType)
         {
             case SpinFortRewardType.Points:
-                if (ScoreManager.Instance != null)
-                    ScoreManager.Instance.AddScore(result.intValue);
+                ScoreManager.Instance?.AddScore(result.intValue);
                 break;
-
             case SpinFortRewardType.FireRateBuff:
-                if (playerController != null)
-                    playerController.ApplyFireRateMultiplier(result.floatValue, result.duration);
+                playerController?.ApplyFireRateMultiplier(result.floatValue, result.duration);
                 break;
-
             case SpinFortRewardType.DamageBuff:
-                if (playerController != null)
-                    playerController.AddBonusDamage(result.intValue, result.duration);
+                playerController?.AddBonusDamage(result.intValue, result.duration);
                 break;
-
             case SpinFortRewardType.MovementSpeedBuff:
-                if (playerController != null)
-                    playerController.ApplyMovementSpeedMultiplier(result.floatValue, result.duration);
+                playerController?.ApplyMovementSpeedMultiplier(result.floatValue, result.duration);
                 break;
-
             case SpinFortRewardType.HealPlayer:
-                if (playerHealth != null)
-                    playerHealth.Heal(result.intValue);
+                playerHealth?.Heal(result.intValue);
                 break;
-
             case SpinFortRewardType.BonusEnemiesNextRound:
-                if (roundManager != null)
-                    roundManager.AddBonusEnemies(Mathf.Max(0, result.intValue));
+                roundManager?.AddBonusEnemies(Mathf.Max(0, result.intValue));
+                break;
+            case SpinFortRewardType.Tower:
+                if (result.towerReward != null)
+                    PlayerTowerInventory.Instance?.AddTower(result.towerReward);
                 break;
         }
     }

@@ -8,6 +8,9 @@ public class SpawnManager : MonoBehaviour
     public GameObject enemyPrefab;
     public BoxCollider2D arenaCollider;
 
+    [Tooltip("When set (e.g. by GateRouletteManager), spawning is restricted to this zone instead of arenaCollider.")]
+    public Collider2D activeGateOverride;
+
     [Tooltip("Minimum distance from any player to spawn")]
     public float minDistanceFromPlayer = 3f;
 
@@ -56,9 +59,10 @@ public class SpawnManager : MonoBehaviour
 
     public GameObject TrySpawnRandom()
     {
-        if (enemyPrefab == null || arenaCollider == null) return null;
+        Collider2D spawnCollider = activeGateOverride != null ? activeGateOverride : arenaCollider;
+        if (enemyPrefab == null || spawnCollider == null) return null;
 
-        var bounds = arenaCollider.bounds;
+        var bounds = spawnCollider.bounds;
 
         for (int attempt = 0; attempt < maxAttemptsPerSpawn; attempt++)
         {
@@ -66,7 +70,7 @@ public class SpawnManager : MonoBehaviour
             float y = Random.Range(bounds.min.y, bounds.max.y);
             Vector2 candidate = new Vector2(x, y);
 
-            if (!IsPointInsideCollider(arenaCollider, candidate)) continue;
+            if (!spawnCollider.OverlapPoint(candidate)) continue;
 
             if (IsTooCloseToPlayers(candidate)) continue;
 
@@ -88,12 +92,6 @@ public class SpawnManager : MonoBehaviour
             if (Vector2.Distance(point, p.position) < minDistanceFromPlayer) return true;
         }
         return false;
-    }
-
-    private bool IsPointInsideCollider(BoxCollider2D box, Vector2 point)
-    {
-        if (box == null) return false;
-        return box.bounds.Contains(point);
     }
 
     public int SpawnMultiple(int count)

@@ -14,22 +14,18 @@ public class SpinFortWheelDefinitionSO : ScriptableObject
         public int intValue = 100;
         public float floatValue = 1.25f;
         [Min(0f)] public float duration = 1f;
+        public TowerSO towerReward; // only used when rewardType == Tower
     }
 
     public List<WheelSegment> segments = new List<WheelSegment>();
 
     public WheelSegment Roll()
     {
-        if (segments == null || segments.Count == 0)
-            return null;
+        if (segments == null || segments.Count == 0) return null;
 
         float totalWeight = 0f;
-        for (int i = 0; i < segments.Count; i++)
-        {
-            var segment = segments[i];
-            if (segment != null && segment.weight > 0f)
-                totalWeight += segment.weight;
-        }
+        foreach (var s in segments)
+            if (s != null && s.weight > 0f) totalWeight += s.weight;
 
         if (totalWeight <= 0f)
             return segments[UnityEngine.Random.Range(0, segments.Count)];
@@ -37,15 +33,11 @@ public class SpinFortWheelDefinitionSO : ScriptableObject
         float roll = UnityEngine.Random.value * totalWeight;
         float cursor = 0f;
 
-        for (int i = 0; i < segments.Count; i++)
+        foreach (var s in segments)
         {
-            var segment = segments[i];
-            if (segment == null || segment.weight <= 0f)
-                continue;
-
-            cursor += segment.weight;
-            if (roll <= cursor)
-                return segment;
+            if (s == null || s.weight <= 0f) continue;
+            cursor += s.weight;
+            if (roll <= cursor) return s;
         }
 
         return segments[segments.Count - 1];

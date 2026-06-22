@@ -8,6 +8,7 @@ public class Enemy : MonoBehaviour
     [HideInInspector] public float healthMultiplier = 1f;
     [HideInInspector] public float speedMultiplier = 1f;
     [HideInInspector] public float damageMultiplier = 1f;
+    private float obstacleSlowMultiplier = 1f;
 
     public int damage => data != null ? Mathf.CeilToInt(data.damage * damageMultiplier) : 1;
     private Rigidbody2D rb;
@@ -92,9 +93,12 @@ public class Enemy : MonoBehaviour
 
         if (target && data != null)
         {
-            rb.linearVelocity = movementDirection * (data.moveSpeed * speedMultiplier);
+            rb.linearVelocity = movementDirection * (data.moveSpeed * speedMultiplier * obstacleSlowMultiplier);
         }
     }
+
+    public void ApplyObstacleSlow(float multiplier) => obstacleSlowMultiplier = Mathf.Clamp(multiplier, 0f, 1f);
+    public void ClearObstacleSlow() => obstacleSlowMultiplier = 1f;
 
     public void TakeDamage(int amount)
     {

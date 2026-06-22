@@ -5,5 +5,6 @@ public enum SpinFortRewardType
     DamageBuff,
     MovementSpeedBuff,
     HealPlayer,
-    BonusEnemiesNextRound
+    BonusEnemiesNextRound,
+    Tower
 }

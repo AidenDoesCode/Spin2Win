@@ -1,14 +1,11 @@
 using UnityEngine;
 using UnityEngine.InputSystem;
+using UnityEngine.EventSystems;
 
 public class TowerPlacementManager : MonoBehaviour
 {
-    [System.Serializable]
-    public class TowerSlot
-    {
-        public string label = "Tower";
-        public TowerSO towerData;
-    }
+public static TowerPlacementManager Instance { get; private set; }
+
 
     [Header("Placement")]
     public Camera placementCamera;
@@ -18,10 +15,16 @@ public class TowerPlacementManager : MonoBehaviour
     public float gridSize = 1f;
     public float blockingRadius = 0.35f;
 
-    [Header("Available Towers")]
-    public TowerSlot[] towers;
-    public int selectedTowerIndex = 0;
+    [Header("Loadout Slots (1-5)")]
+    public TowerSO[] loadout = new TowerSO[5];
+    public int selectedSlot = 0;
 
+
+    private void Awake()
+    {
+        if (Instance == null) Instance = this;
+        else Destroy(gameObject);
+    }
     private void Start()
     {
         if (placementCamera == null)
@@ -30,91 +33,88 @@ public class TowerPlacementManager : MonoBehaviour
 
     private void Update()
     {
-        HandleTowerSelection();
+        HandleSlotSelection();
 
         if (Mouse.current != null && Mouse.current.leftButton.wasPressedThisFrame)
-        {
             TryPlaceSelectedTower();
-        }
     }
 
-    public void SelectTower(int index)
+    public void SelectSlot(int index)
     {
-        if (towers == null || index < 0 || index >= towers.Length)
-            return;
-
-        selectedTowerIndex = index;
+        if (index < 0 || index >= loadout.Length) return;
+        selectedSlot = index;
     }
 
-    private void HandleTowerSelection()
+    // Called by the UI when the player drags a tower into a slot
+    public void AssignTowerToSlot(TowerSO tower, int slotIndex)
     {
-        if (Keyboard.current == null)
-            return;
+        if (slotIndex < 0 || slotIndex >= loadout.Length) return;
+        loadout[slotIndex] = tower;
+        Debug.Log($"TowerPlacementManager: Slot {slotIndex + 1} assigned {(tower != null ? tower.towerName : "empty")}");
+    }
 
-        if (Keyboard.current.digit1Key.wasPressedThisFrame) SelectTower(0);
-        if (Keyboard.current.digit2Key.wasPressedThisFrame) SelectTower(1);
-        if (Keyboard.current.digit3Key.wasPressedThisFrame) SelectTower(2);
-        if (Keyboard.current.digit4Key.wasPressedThisFrame) SelectTower(3);
-        if (Keyboard.current.digit5Key.wasPressedThisFrame) SelectTower(4);
+    private void HandleSlotSelection()
+    {
+        if (Keyboard.current == null) return;
+        if (Keyboard.current.digit1Key.wasPressedThisFrame) SelectSlot(0);
+        if (Keyboard.current.digit2Key.wasPressedThisFrame) SelectSlot(1);
+        if (Keyboard.current.digit3Key.wasPressedThisFrame) SelectSlot(2);
+        if (Keyboard.current.digit4Key.wasPressedThisFrame) SelectSlot(3);
+        if (Keyboard.current.digit5Key.wasPressedThisFrame) SelectSlot(4);
     }
 
     public bool TryPlaceSelectedTower()
     {
-        if (placementCamera == null || towers == null || towers.Length == 0)
+        // Block if mouse is over UI
+        if (EventSystem.current != null && EventSystem.current.IsPointerOverGameObject())
             return false;
+
+        if (placementCamera == null) return false;
 
         if (RoundManager.Instance != null && RoundManager.Instance.IsRoundActive())
             return false;
 
-        if (selectedTowerIndex < 0 || selectedTowerIndex >= towers.Length)
-            return false;
+        TowerSO selected = loadout[selectedSlot];
+        if (selected == null || selected.towerPrefab == null) return false;
 
-        TowerSO selectedTower = towers[selectedTowerIndex] != null ? towers[selectedTowerIndex].towerData : null;
-        if (selectedTower == null || selectedTower.towerPrefab == null)
-            return false;
+        if (ScoreManager.Instance == null) return false;
 
-        if (ScoreManager.Instance == null)
-            return false;
+        Vector2 worldPos = GetSnappedMouseWorldPosition();
 
-        Vector2 worldPosition = GetSnappedMouseWorldPosition();
-        if (!IsInsideBuildArea(worldPosition))
-            return false;
+        if (!IsInsideBuildArea(worldPos)) return false;
 
-        if (Physics2D.OverlapCircle(worldPosition, blockingRadius, blockedMask) != null)
-            return false;
+        Collider2D hit = Physics2D.OverlapCircle(worldPos, blockingRadius, blockedMask);
+        if (hit != null) return false;
 
-        if (!ScoreManager.Instance.TrySpendScore(selectedTower.cost))
-            return false;
+        if (!ScoreManager.Instance.TrySpendScore(selected.cost)) return false;
 
-        GameObject towerObject = Instantiate(selectedTower.towerPrefab, worldPosition, Quaternion.identity, towerParent);
-        Tower tower = towerObject.GetComponent<Tower>();
+        GameObject towerObj = Instantiate(selected.towerPrefab, worldPos, Quaternion.identity, towerParent);
+        Tower tower = towerObj.GetComponent<Tower>();
         if (tower == null)
         {
-            Destroy(towerObject);
-            ScoreManager.Instance.AddScore(selectedTower.cost);
+            Destroy(towerObj);
+            ScoreManager.Instance.AddScore(selected.cost);
             return false;
         }
 
-        tower.Configure(selectedTower);
+        tower.Configure(selected);
         return true;
     }
 
     private Vector2 GetSnappedMouseWorldPosition()
     {
-        Vector3 mousePosition = Mouse.current != null ? (Vector3)Mouse.current.position.ReadValue() : Vector3.zero;
+        Vector3 mousePos = Mouse.current != null ? (Vector3)Mouse.current.position.ReadValue() : Vector3.zero;
         float camZ = -placementCamera.transform.position.z;
-        Vector3 world = placementCamera.ScreenToWorldPoint(new Vector3(mousePosition.x, mousePosition.y, camZ));
-
-        float snappedX = Mathf.Round(world.x / gridSize) * gridSize;
-        float snappedY = Mathf.Round(world.y / gridSize) * gridSize;
-        return new Vector2(snappedX, snappedY);
+        Vector3 world = placementCamera.ScreenToWorldPoint(new Vector3(mousePos.x, mousePos.y, camZ));
+        return new Vector2(
+            Mathf.Round(world.x / gridSize) * gridSize,
+            Mathf.Round(world.y / gridSize) * gridSize
+        );
     }
 
     private bool IsInsideBuildArea(Vector2 position)
     {
-        if (buildArea == null)
-            return true;
-
+        if (buildArea == null) return true;
         return buildArea.OverlapPoint(position);
     }
 }

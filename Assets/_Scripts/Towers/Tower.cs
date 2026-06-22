@@ -9,14 +9,17 @@ public class Tower : MonoBehaviour
     [Tooltip("Assign the FirePoint child object in the Inspector. Bullet spawns here.")]
     public Transform firePoint;
 
+    [Tooltip("Distance from sprite center to barrel tip — only used if firePoint is not assigned.")]
+    public float barrelLength = 0.5f;
+
     private Transform visualTransform;
     private float nextShotTime;
     private float currentAngle;
 
     private void Awake()
     {
-        SpriteRenderer spriteRenderer = GetComponentInChildren<SpriteRenderer>();
-        visualTransform = spriteRenderer != null ? spriteRenderer.transform : transform;
+        SpriteRenderer sr = GetComponentInChildren<SpriteRenderer>();
+        visualTransform = sr != null ? sr.transform : transform;
         currentAngle = visualTransform.eulerAngles.z;
     }
 
@@ -47,22 +50,16 @@ public class Tower : MonoBehaviour
     {
         Enemy[] enemies = Object.FindObjectsByType<Enemy>();
         Enemy closest = null;
-        float closestDistanceSqr = float.MaxValue;
+        float closestDistSqr = float.MaxValue;
         float rangeSqr = data.range * data.range;
 
-        Vector3 position = transform.position;
         for (int i = 0; i < enemies.Length; i++)
         {
-            Enemy enemy = enemies[i];
-            if (enemy == null)
-                continue;
-
-            float distanceSqr = (enemy.transform.position - position).sqrMagnitude;
-            if (distanceSqr > rangeSqr || distanceSqr >= closestDistanceSqr)
-                continue;
-
-            closest = enemy;
-            closestDistanceSqr = distanceSqr;
+            if (enemies[i] == null) continue;
+            float distSqr = (enemies[i].transform.position - transform.position).sqrMagnitude;
+            if (distSqr > rangeSqr || distSqr >= closestDistSqr) continue;
+            closest = enemies[i];
+            closestDistSqr = distSqr;
         }
 
         return closest;
@@ -70,35 +67,29 @@ public class Tower : MonoBehaviour
 
     private bool RotateVisualTowards(Enemy target)
     {
-        if (target == null || visualTransform == null)
-            return false;
+        if (target == null || visualTransform == null) return false;
 
-        Vector2 direction = (target.transform.position - visualTransform.position);
-        if (direction.sqrMagnitude < 0.0001f)
-            return false;
+        Vector2 dir = target.transform.position - visualTransform.position;
+        if (dir.sqrMagnitude < 0.0001f) return false;
 
-        // Barrel faces RIGHT in the sprite, so no offset needed
-        float targetAngle = Mathf.Atan2(direction.y, direction.x) * Mathf.Rad2Deg;
-
+        float targetAngle = Mathf.Atan2(dir.y, dir.x) * Mathf.Rad2Deg;
         currentAngle = Mathf.MoveTowardsAngle(currentAngle, targetAngle, data.rotationSpeed * Time.deltaTime);
         visualTransform.rotation = Quaternion.Euler(0f, 0f, currentAngle);
 
-        float angleDiff = Mathf.Abs(Mathf.DeltaAngle(currentAngle, targetAngle));
-        return angleDiff < 2f;
+        return Mathf.Abs(Mathf.DeltaAngle(currentAngle, targetAngle)) < 2f;
     }
 
     private void FireAt(Enemy target)
     {
-        // Use firePoint if assigned, otherwise fall back to tower's own position
-        Vector3 spawnPosition = firePoint != null ? firePoint.position : transform.position;
+        Vector3 spawnPos = firePoint != null
+            ? firePoint.position
+            : visualTransform.position + visualTransform.right * barrelLength;
 
-        BulletBehavior projectile = Instantiate(data.projectilePrefab, spawnPosition, Quaternion.identity);
-        if (projectile == null)
-            return;
+        BulletBehavior projectile = Instantiate(data.projectilePrefab, spawnPos, Quaternion.identity);
+        if (projectile == null) return;
 
         projectile.Speed = data.projectileSpeed;
         projectile.Damage = data.damage;
-        Vector2 direction = (target.transform.position - spawnPosition).normalized;
-        projectile.SetDirection(direction);
+        projectile.SetDirection((target.transform.position - spawnPos).normalized);
     }
 }

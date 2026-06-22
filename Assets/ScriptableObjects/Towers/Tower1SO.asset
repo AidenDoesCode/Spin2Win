@@ -15,6 +15,8 @@ MonoBehaviour:
   towerName: Tower1
   cost: 100
   range: 4
+  icon: {fileID: 7943707647013513025, guid: 9bd0d901e76acd444839042539b358b5, type: 3}
+  rotationSpeed: 90
   fireRate: 1
   projectileSpeed: 7
   damage: 1

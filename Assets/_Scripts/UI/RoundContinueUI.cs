@@ -6,6 +6,10 @@ public class RoundContinueUI : MonoBehaviour
     [Tooltip("Panel or button GameObject to show/hide when the round has ended")]
     public GameObject panel;
 
+    [Tooltip("If assigned, pressing Continue rolls the gate wheel and waits for it to finish spinning before the round actually starts.")]
+    public GateRouletteManager gateRouletteManager;
+    public GateRouletteUI gateRouletteUI;
+
     private Button continueButton;
     private RoundManager subscribedRoundManager;
 
@@ -29,10 +33,12 @@ public class RoundContinueUI : MonoBehaviour
             subscribedRoundManager = FindAnyObjectByType<RoundManager>();
         }
 
+        if (gateRouletteManager == null) gateRouletteManager = FindAnyObjectByType<GateRouletteManager>();
+        if (gateRouletteUI == null) gateRouletteUI = FindAnyObjectByType<GateRouletteUI>();
+
         if (subscribedRoundManager != null)
         {
             subscribedRoundManager.RoundUpdated += OnRoundUpdated;
-            Debug.Log("RoundContinueUI: Subscribed to RoundManager.RoundUpdated");
             OnRoundUpdated(subscribedRoundManager.CurrentRound, subscribedRoundManager.EnemiesRemaining);
         }
         else
@@ -51,6 +57,9 @@ public class RoundContinueUI : MonoBehaviour
 
         if (continueButton != null)
             continueButton.onClick.RemoveListener(OnContinueClicked);
+
+        if (gateRouletteUI != null)
+            gateRouletteUI.SpinCompleted -= HandleSpinCompleted;
     }
 
     private void OnRoundUpdated(int round, int enemiesRemaining)
@@ -66,8 +75,34 @@ public class RoundContinueUI : MonoBehaviour
 
     private void OnContinueClicked()
     {
-        subscribedRoundManager?.ContinueToNextRound();
+        if (continueButton != null)
+            continueButton.interactable = false;
         if (panel != null)
             panel.SetActive(false);
+
+        if (gateRouletteManager == null)
+        {
+            subscribedRoundManager?.ContinueToNextRound();
+            return;
+        }
+
+        if (gateRouletteUI != null)
+        {
+            gateRouletteUI.SpinCompleted += HandleSpinCompleted;
+            gateRouletteManager.RollGate();
+        }
+        else
+        {
+            gateRouletteManager.RollGate();
+            subscribedRoundManager?.ContinueToNextRound();
+        }
+    }
+
+    private void HandleSpinCompleted()
+    {
+        if (gateRouletteUI != null)
+            gateRouletteUI.SpinCompleted -= HandleSpinCompleted;
+
+        subscribedRoundManager?.ContinueToNextRound();
     }
 }
