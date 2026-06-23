@@ -1,4 +1,5 @@
 using System.Collections;
+using System.Collections.Generic;
 using UnityEngine;
 
 [DisallowMultipleComponent]
@@ -62,6 +63,9 @@ public class SpawnManager : MonoBehaviour
         Collider2D spawnCollider = activeGateOverride != null ? activeGateOverride : arenaCollider;
         if (enemyPrefab == null || spawnCollider == null) return null;
 
+        var pathfinder = EnemyPathfinder.Instance;
+        if (pathfinder != null) return TrySpawnOnPath(spawnCollider, pathfinder);
+
         var bounds = spawnCollider.bounds;
 
         for (int attempt = 0; attempt < maxAttemptsPerSpawn; attempt++)
@@ -78,6 +82,35 @@ public class SpawnManager : MonoBehaviour
 
             var go = Instantiate(enemyPrefab, candidate, Quaternion.identity);
             return go;
+        }
+
+        return null;
+    }
+
+    // Only spawn enemies on path tiles that fall inside the active gate's zone,
+    // so they always start lined up on the route instead of on open ground.
+    private GameObject TrySpawnOnPath(Collider2D spawnCollider, EnemyPathfinder pathfinder)
+    {
+        var candidates = new List<Vector3Int>();
+        foreach (var cell in pathfinder.PathCells)
+        {
+            if (spawnCollider.OverlapPoint(pathfinder.GetCellWorldCenter(cell)))
+                candidates.Add(cell);
+        }
+
+        if (candidates.Count == 0) return null;
+
+        int attempts = Mathf.Min(maxAttemptsPerSpawn, candidates.Count);
+        for (int attempt = 0; attempt < attempts; attempt++)
+        {
+            int index = Random.Range(0, candidates.Count);
+            Vector3 point = pathfinder.GetCellWorldCenter(candidates[index]);
+            candidates.RemoveAt(index);
+
+            if (IsTooCloseToPlayers(point)) continue;
+            if (Physics2D.OverlapCircle(point, clearRadius, obstacleMask) != null) continue;
+
+            return Instantiate(enemyPrefab, point, Quaternion.identity);
         }
 
         return null;

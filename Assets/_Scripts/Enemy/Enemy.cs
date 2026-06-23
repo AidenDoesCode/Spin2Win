@@ -1,8 +1,14 @@
+using System.Collections.Generic;
 using UnityEngine;
 
 public class Enemy : MonoBehaviour
 {
     public EnemySO data;
+
+    // Enemies spawn stacked on the same path tile; without this, their solid
+    // colliders shove each other apart on spawn and knock them off the path.
+    private static readonly List<Collider2D> activeColliders = new List<Collider2D>();
+    private Collider2D col;
 
     private int currentHealth;
     [HideInInspector] public float healthMultiplier = 1f;
@@ -10,16 +16,34 @@ public class Enemy : MonoBehaviour
     [HideInInspector] public float damageMultiplier = 1f;
     private float obstacleSlowMultiplier = 1f;
 
+    [Tooltip("Distance to a waypoint before the enemy advances to the next one along the path")]
+    public float waypointReachedDistance = 0.15f;
+
     public int damage => data != null ? Mathf.CeilToInt(data.damage * damageMultiplier) : 1;
     private Rigidbody2D rb;
     private Vector2 movementDirection;
     private Transform target;
     private BaseHealth targetBase;
-    private float nextAttackTime;
+    private Vector3 currentWaypoint;
 
     private void Awake()
     {
         rb = GetComponent<Rigidbody2D>();
+
+        col = GetComponent<Collider2D>();
+        if (col != null)
+        {
+            foreach (var other in activeColliders)
+            {
+                if (other != null) Physics2D.IgnoreCollision(col, other);
+            }
+            activeColliders.Add(col);
+        }
+    }
+
+    private void OnDestroy()
+    {
+        if (col != null) activeColliders.Remove(col);
     }
 
     private void Start()
@@ -39,6 +63,11 @@ public class Enemy : MonoBehaviour
         {
             GameObject playerObj = GameObject.Find("Player");
             target = playerObj != null ? playerObj.transform : null;
+        }
+
+        if (targetBase != null && EnemyPathfinder.Instance != null)
+        {
+            currentWaypoint = EnemyPathfinder.Instance.GetNextWaypoint(transform.position);
         }
     }
 
@@ -61,15 +90,23 @@ public class Enemy : MonoBehaviour
             if (distanceToBase <= damageRadius)
             {
                 movementDirection = Vector2.zero;
-                if (Time.time >= nextAttackTime)
-                {
-                    targetBase.TakeDamage(damage);
-                    nextAttackTime = Time.time + Mathf.Max(0.05f, data.attackCooldown);
-                }
+                targetBase.TakeDamage(damage);
+                ReachBase();
                 return;
             }
 
-            movementDirection = toBase.normalized;
+            if (EnemyPathfinder.Instance == null)
+            {
+                movementDirection = toBase.normalized;
+                return;
+            }
+
+            if (Vector2.Distance(transform.position, currentWaypoint) <= waypointReachedDistance)
+            {
+                currentWaypoint = EnemyPathfinder.Instance.GetNextWaypoint(transform.position);
+            }
+
+            movementDirection = ((Vector2)currentWaypoint - (Vector2)transform.position).normalized;
             return;
         }
 
@@ -79,12 +116,6 @@ public class Enemy : MonoBehaviour
 
     private void FixedUpdate()
     {
-        var turnManager = TurnManager.Instance;
-        if (turnManager != null)
-        {
-            if (turnManager.CurrentPhase != TurnManager.Phase.Enemies) return;
-        }
-
         if (targetBase != null && targetBase.IsDead)
         {
             rb.linearVelocity = Vector2.zero;
@@ -105,6 +136,22 @@ public class Enemy : MonoBehaviour
         if (data == null) return;
         currentHealth -= amount;
         if (currentHealth <= 0) Die();
+    }
+
+    // Reaching the base is a leak, not a kill: no score, no death prefab,
+    // just stop counting it toward the round so the wave can still end.
+    private void ReachBase()
+    {
+        if (RoundManager.Instance != null)
+        {
+            RoundManager.Instance.OnEnemyKilled(this);
+        }
+        else
+        {
+            var rm = Object.FindAnyObjectByType<RoundManager>();
+            if (rm != null) rm.OnEnemyKilled(this);
+        }
+        Destroy(gameObject);
     }
 
     private void Die()

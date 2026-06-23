@@ -11,6 +11,12 @@ public class RoundManager : MonoBehaviour
     public float timeBetweenRounds = 3f;
     public int enemiesBasePerRound = 3;
 
+    [Header("Spawn Pacing")]
+    [Tooltip("Minimum delay between two enemies spawning within the same round")]
+    public float minSpawnDelay = 0.3f;
+    [Tooltip("Maximum delay between two enemies spawning within the same round")]
+    public float maxSpawnDelay = 1.2f;
+
     [Header("Difficulty Scaling")]
     [Tooltip("Multiplier applied to enemy max health per round (exponential)")]
     public float healthMultiplierPerRound = 1.2f;
@@ -122,7 +128,7 @@ public class RoundManager : MonoBehaviour
                 RoundUpdated?.Invoke(CurrentRound, EnemiesRemaining);
                 Debug.Log($"RoundManager: Spawned enemy (round {CurrentRound}) -> EnemiesRemaining={EnemiesRemaining}");
 
-                yield return new WaitForSeconds(0.1f);
+                yield return new WaitForSeconds(UnityEngine.Random.Range(minSpawnDelay, maxSpawnDelay));
             }
         }
 

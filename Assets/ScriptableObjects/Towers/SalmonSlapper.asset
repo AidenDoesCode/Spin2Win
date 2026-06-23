@@ -1,0 +1,24 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: cb0ef06883d994ed6871027fef574160, type: 3}
+  m_Name: SalmonSlapper
+  m_EditorClassIdentifier: Assembly-CSharp::TowerSO
+  towerName: Salmon Slapper
+  cost: 75
+  range: 1.5
+  icon: {fileID: 7943707647013513025, guid: 9bd0d901e76acd444839042539b358b5, type: 3}
+  rotationSpeed: 180
+  fireRate: 2.5
+  projectileSpeed: 15
+  damage: 2
+  projectilePrefab: {fileID: 299504703514488645, guid: a99ca28d3f6c0a1408b87c52de3176be, type: 3}
+  towerPrefab: {fileID: 3874816204346800925, guid: 681100dc363bc411b855364da738b3a2, type: 3}

@@ -1,3 +1,4 @@
+using System.Collections;
 using UnityEngine;
 using UnityEngine.UI;
 
@@ -9,6 +10,9 @@ public class RoundContinueUI : MonoBehaviour
     [Tooltip("If assigned, pressing Continue rolls the gate wheel and waits for it to finish spinning before the round actually starts.")]
     public GateRouletteManager gateRouletteManager;
     public GateRouletteUI gateRouletteUI;
+
+    [Tooltip("Minimum seconds to wait after the wheel finishes spinning before enemies start spawning")]
+    public float minDelayAfterSpin = 1f;
 
     private Button continueButton;
     private RoundManager subscribedRoundManager;
@@ -102,6 +106,14 @@ public class RoundContinueUI : MonoBehaviour
     {
         if (gateRouletteUI != null)
             gateRouletteUI.SpinCompleted -= HandleSpinCompleted;
+
+        StartCoroutine(ContinueAfterDelay());
+    }
+
+    private IEnumerator ContinueAfterDelay()
+    {
+        if (minDelayAfterSpin > 0f)
+            yield return new WaitForSeconds(minDelayAfterSpin);
 
         subscribedRoundManager?.ContinueToNextRound();
     }
