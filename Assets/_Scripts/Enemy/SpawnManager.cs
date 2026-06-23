@@ -33,6 +33,13 @@ public class SpawnManager : MonoBehaviour
     [Tooltip("If empty, the script will try to find objects tagged 'Player'")]
     public Transform[] players;
 
+    [Header("Enemy Pool (Point Budget)")]
+    [Tooltip("Enemy types RoundManager can draw from when generating a budget-based wave.")]
+    public List<EnemySO> enemyPool = new List<EnemySO>();
+
+    [Tooltip("Chance each 0-cost enemy (e.g. Goldfish Gambler) gets added once per wave, independent of the point budget.")]
+    [Range(0f, 1f)] public float bonusSpawnChance = 0.08f;
+
     private void Start()
     {
         if (players == null || players.Length == 0)
@@ -114,6 +121,63 @@ public class SpawnManager : MonoBehaviour
         }
 
         return null;
+    }
+
+    // Spawns the shared enemy prefab and configures it as a specific EnemySO type.
+    public GameObject TrySpawnEnemy(EnemySO enemyData)
+    {
+        GameObject go = TrySpawnRandom();
+        if (go == null) return null;
+
+        if (enemyData != null)
+        {
+            Enemy enemy = go.GetComponent<Enemy>();
+            if (enemy != null) enemy.Configure(enemyData);
+        }
+
+        return go;
+    }
+
+    // Spends a fixed point budget across the enemy pool, picking randomly until
+    // the budget runs out. Cheap units (Minnows) fill in whatever a single
+    // expensive pick (Anchor Shark) doesn't use.
+    public List<EnemySO> GenerateWave(int roundBudget)
+    {
+        var enemiesToSpawn = new List<EnemySO>();
+        var pool = enemyPool.FindAll(e => e != null && e.pointCost > 0);
+
+        if (pool.Count > 0 && roundBudget > 0)
+        {
+            // Gatekeeper rule: nothing costing more than half the round's starting
+            // budget is allowed in, so one round can't blow its whole budget on
+            // a single heavy unit before the budget can comfortably support it.
+            int gatekeeperCap = roundBudget / 2;
+            var affordablePool = pool.FindAll(e => e.pointCost <= gatekeeperCap);
+            if (affordablePool.Count == 0) affordablePool = pool;
+
+            int minCost = int.MaxValue;
+            foreach (var e in affordablePool) minCost = Mathf.Min(minCost, e.pointCost);
+
+            while (roundBudget >= minCost)
+            {
+                EnemySO candidate = affordablePool[Random.Range(0, affordablePool.Count)];
+                if (candidate.pointCost > roundBudget) continue; // too pricey for what's left; spin again
+
+                enemiesToSpawn.Add(candidate);
+                roundBudget -= candidate.pointCost;
+            }
+        }
+
+        // 0-cost enemies (e.g. Goldfish Gambler) never enter the budget loop --
+        // a 0-cost pick would never reduce roundBudget and could spin forever.
+        // Instead each one rolls independently as a pure bonus spawn.
+        var bonusPool = enemyPool.FindAll(e => e != null && e.pointCost == 0);
+        foreach (var bonus in bonusPool)
+        {
+            if (Random.value <= bonusSpawnChance) enemiesToSpawn.Add(bonus);
+        }
+
+        return enemiesToSpawn;
     }
 
     private bool IsTooCloseToPlayers(Vector2 point)

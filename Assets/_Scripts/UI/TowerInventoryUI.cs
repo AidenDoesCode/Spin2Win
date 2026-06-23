@@ -72,12 +72,6 @@ public class TowerInventoryUI : MonoBehaviour
                 Debug.LogWarning("TowerInventoryUI: Tower in list is null");
                 continue;
             }
-            if (displayedTowers.Contains(tower))
-            {
-                Debug.Log($"TowerInventoryUI: Skipping duplicate {tower.towerName}");
-                continue;
-            }
-
             Debug.Log($"TowerInventoryUI: Creating card for {tower.towerName}");
             displayedTowers.Add(tower);
             cards.Add(CreateCard(tower, cards.Count));

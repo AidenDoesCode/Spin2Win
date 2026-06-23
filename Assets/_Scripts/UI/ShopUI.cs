@@ -45,13 +45,24 @@ public class ShopUI : MonoBehaviour
     public Color affordableColor   = new Color(0.878f, 0.753f, 0.376f, 1f);
     public Color unaffordableColor = new Color(0.5f, 0.2f, 0.2f, 1f);
 
+    [Header("Rarity Colors")]
+    public Color commonRarityColor    = new Color(0.65f, 0.65f, 0.65f, 1f);
+    public Color uncommonRarityColor  = new Color(0.35f, 0.85f, 0.4f, 1f);
+    public Color rareRarityColor      = new Color(0.3f, 0.55f, 0.95f, 1f);
+    public Color epicRarityColor      = new Color(0.65f, 0.3f, 0.9f, 1f);
+    public Color legendaryRarityColor = new Color(0.95f, 0.75f, 0.2f, 1f);
+
     private RectTransform innerPanel;
     private readonly List<GameObject> cards = new List<GameObject>();
     private readonly List<Coroutine> itemSpinRoutines = new List<Coroutine>();
+    private readonly List<Coroutine> rarityGlowRoutines = new List<Coroutine>();
     private SpinFortShopManager shop;
     private TextMeshProUGUI rerollLabel;
     private Button rerollButton;
+    private RectTransform rerollRT;
+    private Image rerollImg;
     private Coroutine appearRoutine;
+    private Coroutine rerollFlashRoutine;
 
     private void Awake()
     {
@@ -115,7 +126,10 @@ public class ShopUI : MonoBehaviour
 
     public void Hide()
     {
-        gameObject.SetActive(false);
+        if (!gameObject.activeSelf) return;
+
+        if (appearRoutine != null) StopCoroutine(appearRoutine);
+        appearRoutine = StartCoroutine(PlayDisappearAnimation());
     }
 
     private IEnumerator PlayAppearAnimation()
@@ -136,6 +150,26 @@ public class ShopUI : MonoBehaviour
         appearRoutine = null;
     }
 
+    // The shop "slides away" once a round kicks off, instead of just vanishing.
+    private IEnumerator PlayDisappearAnimation()
+    {
+        Vector3 startScale = innerPanel.localScale;
+        float elapsed = 0f;
+        while (elapsed < appearDuration)
+        {
+            float t = elapsed / appearDuration;
+            float eased = t * t;
+            innerPanel.localScale = Vector3.Lerp(startScale, Vector3.zero, eased);
+            innerPanel.localRotation = Quaternion.Euler(0f, 0f, Mathf.Lerp(0f, -appearSpinDegrees, eased));
+            elapsed += Time.deltaTime;
+            yield return null;
+        }
+
+        innerPanel.localScale = Vector3.zero;
+        gameObject.SetActive(false);
+        appearRoutine = null;
+    }
+
     private void OnRerollClicked()
     {
         if (shop == null) return;
@@ -152,19 +186,71 @@ public class ShopUI : MonoBehaviour
             if (routine != null) StopCoroutine(routine);
         itemSpinRoutines.Clear();
 
+        foreach (Coroutine routine in rarityGlowRoutines)
+            if (routine != null) StopCoroutine(routine);
+        rarityGlowRoutines.Clear();
+
         foreach (GameObject card in cards)
             if (card != null) Destroy(card);
         cards.Clear();
 
         if (shop == null) return;
 
-        for (int i = 0; i < shop.CurrentOffers.Count; i++)
-            cards.Add(CreateCard(shop.CurrentOffers[i], i, spin));
+        bool revealed = shop.CurrentOffers.Count > 0;
+        ApplyRerollButtonMode(revealed);
+
+        if (revealed)
+        {
+            for (int i = 0; i < shop.CurrentOffers.Count; i++)
+                cards.Add(CreateCard(shop.CurrentOffers[i], i, spin));
+        }
+
+        ResizePanel();
+    }
+
+    // Before the player has spent gold to reveal offers, the reroll button
+    // takes over as a big flashing "SPIN FOR TOWERS!" prompt front-and-center.
+    private void ApplyRerollButtonMode(bool revealed)
+    {
+        if (rerollFlashRoutine != null) StopCoroutine(rerollFlashRoutine);
+
+        if (revealed)
+        {
+            rerollRT.anchorMin = new Vector2(0f, 1f);
+            rerollRT.anchorMax = new Vector2(0f, 1f);
+            rerollRT.pivot = new Vector2(0f, 1f);
+            rerollRT.anchoredPosition = new Vector2(padding, -(titleRowHeight + rerollRowGap));
+            rerollRT.sizeDelta = new Vector2(rerollButtonWidth, rerollButtonHeight);
+            rerollLabel.fontSize = 26;
+            rerollLabel.text = $"Reroll ({shop.rerollCost})";
+            rerollImg.color = cardBorderColor;
+        }
+        else
+        {
+            rerollRT.anchorMin = new Vector2(0.5f, 0.5f);
+            rerollRT.anchorMax = new Vector2(0.5f, 0.5f);
+            rerollRT.pivot = new Vector2(0.5f, 0.5f);
+            rerollRT.anchoredPosition = Vector2.zero;
+            rerollRT.sizeDelta = new Vector2(rerollButtonWidth * 1.8f, rerollButtonHeight * 1.6f);
+            rerollLabel.fontSize = 34;
+            rerollLabel.text = "SPIN FOR TOWERS!";
+            rerollFlashRoutine = StartCoroutine(FlashRerollButton());
+        }
 
         int score = ScoreManager.Instance != null ? ScoreManager.Instance.Score : 0;
         rerollButton.interactable = shop.IsOpen && score >= shop.rerollCost;
+    }
 
-        ResizePanel();
+    private IEnumerator FlashRerollButton()
+    {
+        float t = 0f;
+        while (true)
+        {
+            t += Time.deltaTime * 4f;
+            float pulse = (Mathf.Sin(t) + 1f) * 0.5f;
+            rerollImg.color = Color.Lerp(affordableColor, Color.white, pulse * 0.5f);
+            yield return null;
+        }
     }
 
     private GameObject CreateCard(SpinFortShopManager.ShopOffer offer, int index, bool spin)
@@ -184,7 +270,12 @@ public class ShopUI : MonoBehaviour
         borderRT.anchoredPosition = new Vector2(xPos, padding);
         borderRT.sizeDelta = new Vector2(cardWidth, cardHeight);
         Image borderImg = borderObj.AddComponent<Image>();
-        borderImg.color = cardBorderColor;
+        Color rarityColor = GetRarityColor(offer.rarity);
+        borderImg.color = rarityColor;
+
+        float glowIntensity = GetRarityGlowIntensity(offer.rarity);
+        if (glowIntensity > 0f)
+            rarityGlowRoutines.Add(StartCoroutine(RarityGlow(borderImg, rarityColor, glowIntensity, GetRarityGlowSpeed(offer.rarity))));
 
         GameObject innerObj = new GameObject("Inner");
         innerObj.transform.SetParent(borderObj.transform, false);
@@ -264,6 +355,55 @@ public class ShopUI : MonoBehaviour
         }
 
         return borderObj;
+    }
+
+    private Color GetRarityColor(CardRarity rarity)
+    {
+        switch (rarity)
+        {
+            case CardRarity.Uncommon:  return uncommonRarityColor;
+            case CardRarity.Rare:      return rareRarityColor;
+            case CardRarity.Epic:      return epicRarityColor;
+            case CardRarity.Legendary: return legendaryRarityColor;
+            default:                   return commonRarityColor;
+        }
+    }
+
+    // Higher rarities pulse brighter (more "sparkly"); Common stays static.
+    private float GetRarityGlowIntensity(CardRarity rarity)
+    {
+        switch (rarity)
+        {
+            case CardRarity.Uncommon:  return 0.15f;
+            case CardRarity.Rare:      return 0.25f;
+            case CardRarity.Epic:      return 0.4f;
+            case CardRarity.Legendary: return 0.6f;
+            default:                   return 0f;
+        }
+    }
+
+    private float GetRarityGlowSpeed(CardRarity rarity)
+    {
+        switch (rarity)
+        {
+            case CardRarity.Uncommon:  return 1.5f;
+            case CardRarity.Rare:      return 2.2f;
+            case CardRarity.Epic:      return 3f;
+            case CardRarity.Legendary: return 4f;
+            default:                   return 0f;
+        }
+    }
+
+    private IEnumerator RarityGlow(Image borderImg, Color baseColor, float intensity, float speed)
+    {
+        float t = 0f;
+        while (borderImg != null)
+        {
+            t += Time.deltaTime * speed;
+            float pulse = (Mathf.Sin(t) + 1f) * 0.5f;
+            borderImg.color = Color.Lerp(baseColor, Color.white, pulse * intensity);
+            yield return null;
+        }
     }
 
     private IEnumerator SpinThenReveal(SpinFortShopManager.ShopOffer offer, int index, bool isPurchased, bool canAfford,
@@ -421,15 +561,15 @@ public class ShopUI : MonoBehaviour
     {
         GameObject rerollObj = new GameObject("RerollButton");
         rerollObj.transform.SetParent(innerPanel, false);
-        RectTransform rt = rerollObj.AddComponent<RectTransform>();
-        rt.anchorMin = new Vector2(0f, 1f);
-        rt.anchorMax = new Vector2(0f, 1f);
-        rt.pivot = new Vector2(0f, 1f);
-        rt.anchoredPosition = new Vector2(padding, -(titleRowHeight + rerollRowGap));
-        rt.sizeDelta = new Vector2(rerollButtonWidth, rerollButtonHeight);
+        rerollRT = rerollObj.AddComponent<RectTransform>();
+        rerollRT.anchorMin = new Vector2(0f, 1f);
+        rerollRT.anchorMax = new Vector2(0f, 1f);
+        rerollRT.pivot = new Vector2(0f, 1f);
+        rerollRT.anchoredPosition = new Vector2(padding, -(titleRowHeight + rerollRowGap));
+        rerollRT.sizeDelta = new Vector2(rerollButtonWidth, rerollButtonHeight);
 
-        Image img = rerollObj.AddComponent<Image>();
-        img.color = cardBorderColor;
+        rerollImg = rerollObj.AddComponent<Image>();
+        rerollImg.color = cardBorderColor;
         rerollButton = rerollObj.AddComponent<Button>();
         rerollButton.onClick.AddListener(OnRerollClicked);
 

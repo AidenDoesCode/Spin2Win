@@ -8,6 +8,8 @@ public class SpinFortShopManager : MonoBehaviour
     public class ShopOffer
     {
         public string label = "Upgrade";
+        [Tooltip("Drives the card's border color and sparkle intensity in the shop UI.")]
+        public CardRarity rarity = CardRarity.Common;
         [Tooltip("Relative odds this offer gets rolled into the shop each buy phase.")]
         [Min(0f)] public float weight = 1f;
         [Min(0)] public int cost = 100;
@@ -74,11 +76,19 @@ public class SpinFortShopManager : MonoBehaviour
     }
 
     private void HandleRoundStarted(int round) => CloseShop();
-    private void HandleRoundFinished(int round) => OpenShop();
 
+    private void HandleRoundFinished(int round)
+    {
+        TowerPlacementManager.Instance?.LockRandomSlot();
+        OpenShop();
+    }
+
+    // Opens empty -- the player has to spend gold via TryReroll (the "SPIN FOR
+    // TOWERS!" prompt) to actually reveal offers, even the first time.
     public void OpenShop()
     {
-        RerollOffers();
+        CurrentOffers.Clear();
+        purchased.Clear();
         IsOpen = true;
         ShopOpened?.Invoke();
     }

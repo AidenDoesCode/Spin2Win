@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: PufferMinePlacer 1
   m_EditorClassIdentifier: Assembly-CSharp::TowerSO
   towerName: Puffer Hurler
-  cost: 125
+  cost: 40
   range: 5
   icon: {fileID: 7943707647013513025, guid: 9bd0d901e76acd444839042539b358b5, type: 3}
   rotationSpeed: 120

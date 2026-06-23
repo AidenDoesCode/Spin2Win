@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: SwordfishSniper
   m_EditorClassIdentifier: Assembly-CSharp::TowerSO
   towerName: SworrdfishSniper
-  cost: 250
+  cost: 150
   range: 8
   icon: {fileID: 7943707647013513025, guid: 9bd0d901e76acd444839042539b358b5, type: 3}
   rotationSpeed: 45

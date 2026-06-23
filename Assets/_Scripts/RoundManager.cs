@@ -1,5 +1,6 @@
 using System;
 using System.Collections;
+using System.Collections.Generic;
 using UnityEngine;
 
 public class RoundManager : MonoBehaviour
@@ -8,8 +9,14 @@ public class RoundManager : MonoBehaviour
 
     [Header("Round Settings")]
     public int startingRound = 1;
-    public float timeBetweenRounds = 3f;
-    public int enemiesBasePerRound = 3;
+    [Tooltip("Setup phase length: how long the player has to spend gold/place towers before the round auto-starts.")]
+    public float timeBetweenRounds = 30f;
+
+    [Header("Point Budget")]
+    [Tooltip("Flat point budget added to every round, before scaling")]
+    public float baseRoundBudget = 1f;
+    [Tooltip("Points added to the budget per round (the 'Difficulty Scaling Constant')")]
+    public float difficultyScalingConstant = 5f;
 
     [Header("Spawn Pacing")]
     [Tooltip("Minimum delay between two enemies spawning within the same round")]
@@ -37,9 +44,14 @@ public class RoundManager : MonoBehaviour
     public event Action<int> RoundFinished;
     public event Action<int,int> RoundUpdated;
 
+    [Tooltip("Fires every frame during the setup phase with seconds remaining, for a UI countdown.")]
+    public event Action<float> SetupTimerTick;
+    [Tooltip("Fires once when the setup countdown reaches zero, so a hard auto-start can trigger (e.g. via RoundContinueUI).")]
+    public event Action SetupTimerExpired;
+
     private bool roundActive = false;
     private bool waitingForPlayerContinue = false;
-    private int bonusEnemiesNextRound = 0;
+    private int bonusBudgetNextRound = 0; // extra point budget granted by shop/wheel rewards
 
     void Awake()
     {
@@ -62,13 +74,9 @@ public class RoundManager : MonoBehaviour
             if (BaseHealth.Instance != null && BaseHealth.Instance.IsDead)
                 yield break;
 
-            while (waitingForPlayerContinue)
-            {
-                if (BaseHealth.Instance != null && BaseHealth.Instance.IsDead)
-                    yield break;
-
-                yield return null;
-            }
+            yield return StartCoroutine(WaitForContinueOrTimeout());
+            if (BaseHealth.Instance != null && BaseHealth.Instance.IsDead)
+                yield break;
 
             yield return StartCoroutine(StartRound());
 
@@ -77,14 +85,34 @@ public class RoundManager : MonoBehaviour
 
             waitingForPlayerContinue = true;
             RoundUpdated?.Invoke(CurrentRound, EnemiesRemaining);
-            while (waitingForPlayerContinue)
-            {
-                if (BaseHealth.Instance != null && BaseHealth.Instance.IsDead)
-                    yield break;
+        }
+    }
 
-                yield return null;
+    // Setup phase: waits for either a manual ContinueToNextRound() call (e.g.
+    // the player pressing "Start Round" early) or the countdown hitting zero,
+    // at which point SetupTimerExpired fires so a listener (RoundContinueUI)
+    // can run the same continue sequence (gate roll, wheel spin, etc.) automatically.
+    private IEnumerator WaitForContinueOrTimeout()
+    {
+        float remaining = timeBetweenRounds;
+        bool expiredFired = false;
+        SetupTimerTick?.Invoke(remaining);
+
+        while (waitingForPlayerContinue)
+        {
+            if (BaseHealth.Instance != null && BaseHealth.Instance.IsDead)
+                yield break;
+
+            remaining = Mathf.Max(0f, remaining - Time.deltaTime);
+            SetupTimerTick?.Invoke(remaining);
+
+            if (remaining <= 0f && !expiredFired)
+            {
+                expiredFired = true;
+                SetupTimerExpired?.Invoke();
             }
-            yield return new WaitForSeconds(timeBetweenRounds);
+
+            yield return null;
         }
     }
 
@@ -95,8 +123,8 @@ public class RoundManager : MonoBehaviour
         RoundStarted?.Invoke(CurrentRound);
         Debug.Log($"RoundManager: Starting round {CurrentRound}");
 
-        int toSpawn = Mathf.CeilToInt(enemiesBasePerRound + (CurrentRound - 1) * 1.5f) + bonusEnemiesNextRound;
-        bonusEnemiesNextRound = 0;
+        int roundBudget = Mathf.RoundToInt(baseRoundBudget + CurrentRound * difficultyScalingConstant) + bonusBudgetNextRound;
+        bonusBudgetNextRound = 0;
         EnemiesRemaining = 0;
         RoundUpdated?.Invoke(CurrentRound, EnemiesRemaining);
 
@@ -106,9 +134,12 @@ public class RoundManager : MonoBehaviour
         }
         else
         {
-            for (int i = 0; i < toSpawn; i++)
+            List<EnemySO> wave = spawner.GenerateWave(roundBudget);
+            Debug.Log($"RoundManager: Round {CurrentRound} budget={roundBudget}, wave size={wave.Count}");
+
+            foreach (EnemySO enemyData in wave)
             {
-                var go = spawner.TrySpawnRandom();
+                var go = spawner.TrySpawnEnemy(enemyData);
                 if (go == null)
                 {
                     yield return new WaitForSeconds(0.05f);
@@ -126,7 +157,7 @@ public class RoundManager : MonoBehaviour
 
                 EnemiesRemaining++;
                 RoundUpdated?.Invoke(CurrentRound, EnemiesRemaining);
-                Debug.Log($"RoundManager: Spawned enemy (round {CurrentRound}) -> EnemiesRemaining={EnemiesRemaining}");
+                Debug.Log($"RoundManager: Spawned {enemyData.enemyName} (round {CurrentRound}) -> EnemiesRemaining={EnemiesRemaining}");
 
                 yield return new WaitForSeconds(UnityEngine.Random.Range(minSpawnDelay, maxSpawnDelay));
             }
@@ -168,9 +199,11 @@ public class RoundManager : MonoBehaviour
         RoundUpdated?.Invoke(CurrentRound, EnemiesRemaining);
     }
 
+    // Name kept for compatibility with existing shop/wheel reward call sites;
+    // "amount" is now extra point budget rather than a raw enemy count.
     public void AddBonusEnemies(int amount)
     {
-        bonusEnemiesNextRound = Mathf.Max(0, bonusEnemiesNextRound + amount);
+        bonusBudgetNextRound = Mathf.Max(0, bonusBudgetNextRound + amount);
     }
 
     public void ContinueToNextRound()

@@ -10,14 +10,15 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: df2bdb31aea88b340ba9e21aad57319f, type: 3}
-  m_Name: Enemy1
+  m_Name: FlyingFIsh
   m_EditorClassIdentifier: Assembly-CSharp::EnemySO
-  enemyName: Enemy1
-  maxHealth: 2
+  enemyName: Flying Fish
+  pointCost: 3
+  maxHealth: 3
   damage: 2
-  moveSpeed: 2
+  moveSpeed: 2.2
   detectionRadius: 10
   attackRange: 1
   attackCooldown: 1
   deathPrefab: {fileID: 0}
-  scoreValue: 10
+  scoreValue: 15

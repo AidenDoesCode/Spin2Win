@@ -43,6 +43,7 @@ public class RoundContinueUI : MonoBehaviour
         if (subscribedRoundManager != null)
         {
             subscribedRoundManager.RoundUpdated += OnRoundUpdated;
+            subscribedRoundManager.SetupTimerExpired += HandleSetupTimerExpired;
             OnRoundUpdated(subscribedRoundManager.CurrentRound, subscribedRoundManager.EnemiesRemaining);
         }
         else
@@ -57,7 +58,10 @@ public class RoundContinueUI : MonoBehaviour
     void OnDestroy()
     {
         if (subscribedRoundManager != null)
+        {
             subscribedRoundManager.RoundUpdated -= OnRoundUpdated;
+            subscribedRoundManager.SetupTimerExpired -= HandleSetupTimerExpired;
+        }
 
         if (continueButton != null)
             continueButton.onClick.RemoveListener(OnContinueClicked);
@@ -75,6 +79,15 @@ public class RoundContinueUI : MonoBehaviour
             if (continueButton != null)
                 continueButton.interactable = roundFinished;
         }
+    }
+
+    // Hard auto-start: when the setup countdown hits zero, run the exact same
+    // continue sequence as the button (gate roll, wheel spin, etc.) so the
+    // round still starts even if the player never clicks anything.
+    private void HandleSetupTimerExpired()
+    {
+        if (continueButton != null && !continueButton.interactable) return; // already continuing (e.g. manual click won the race)
+        OnContinueClicked();
     }
 
     private void OnContinueClicked()

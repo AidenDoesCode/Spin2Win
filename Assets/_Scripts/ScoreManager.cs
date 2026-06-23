@@ -5,7 +5,7 @@ public class ScoreManager : MonoBehaviour
 {
     public static ScoreManager Instance { get; private set; }
 
-    [SerializeField] private int score;
+    [SerializeField] private int score = 200;
 
     public int Score => score;
 

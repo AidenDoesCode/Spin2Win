@@ -128,6 +128,10 @@ public class Enemy : MonoBehaviour
         }
     }
 
+    // Called by SpawnManager right after Instantiate, before Start runs, so a
+    // shared enemy prefab can be spawned as any EnemySO type from the budget pool.
+    public void Configure(EnemySO enemyData) => data = enemyData;
+
     public void ApplyObstacleSlow(float multiplier) => obstacleSlowMultiplier = Mathf.Clamp(multiplier, 0f, 1f);
     public void ClearObstacleSlow() => obstacleSlowMultiplier = 1f;
 

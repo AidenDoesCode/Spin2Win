@@ -1,3 +1,4 @@
+using System;
 using UnityEngine;
 using UnityEngine.InputSystem;
 using UnityEngine.EventSystems;
@@ -5,6 +6,10 @@ using UnityEngine.EventSystems;
 public class TowerPlacementManager : MonoBehaviour
 {
 public static TowerPlacementManager Instance { get; private set; }
+
+    // Fired whenever a slot's TowerSO reference changes, so LoadoutBarUI can
+    // refresh that one slot's icon without polling the whole array every frame.
+    public event Action<int> SlotChanged;
 
 
     [Header("Placement")]
@@ -18,6 +23,9 @@ public static TowerPlacementManager Instance { get; private set; }
     [Header("Loadout Slots (1-5)")]
     public TowerSO[] loadout = new TowerSO[5];
     public int selectedSlot = 0;
+
+    [Tooltip("-1 = no slot locked. Set by the 'Locked Slot' shop modifier; that slot can't be selected, assigned, or placed from.")]
+    public int lockedSlotIndex = -1;
 
 
     private void Awake()
@@ -42,15 +50,47 @@ public static TowerPlacementManager Instance { get; private set; }
     public void SelectSlot(int index)
     {
         if (index < 0 || index >= loadout.Length) return;
+        if (index == lockedSlotIndex) return;
         selectedSlot = index;
     }
 
     // Called by the UI when the player drags a tower into a slot
-    public void AssignTowerToSlot(TowerSO tower, int slotIndex)
+    public bool AssignTowerToSlot(TowerSO tower, int slotIndex)
     {
-        if (slotIndex < 0 || slotIndex >= loadout.Length) return;
+        if (slotIndex < 0 || slotIndex >= loadout.Length) return false;
+        if (slotIndex == lockedSlotIndex) return false;
         loadout[slotIndex] = tower;
         Debug.Log($"TowerPlacementManager: Slot {slotIndex + 1} assigned {(tower != null ? tower.towerName : "empty")}");
+        SlotChanged?.Invoke(slotIndex);
+        return true;
+    }
+
+    // Called by SpinFortShopManager whenever the shop spins, to freeze a
+    // random hand slot for the upcoming wave ("Locked Slot" modifier).
+    public void LockRandomSlot()
+    {
+        lockedSlotIndex = UnityEngine.Random.Range(0, loadout.Length);
+
+        if (selectedSlot == lockedSlotIndex)
+        {
+            for (int i = 0; i < loadout.Length; i++)
+            {
+                if (i == lockedSlotIndex) continue;
+                selectedSlot = i;
+                break;
+            }
+        }
+    }
+
+    public void ClearLockedSlot() => lockedSlotIndex = -1;
+
+    // Removes whatever tower occupies a slot, bypassing the lock check.
+    // Used when recycling a tower (including one stuck in the locked slot).
+    public void ClearSlot(int slotIndex)
+    {
+        if (slotIndex < 0 || slotIndex >= loadout.Length) return;
+        loadout[slotIndex] = null;
+        SlotChanged?.Invoke(slotIndex);
     }
 
     private void HandleSlotSelection()
@@ -74,10 +114,15 @@ public static TowerPlacementManager Instance { get; private set; }
         if (RoundManager.Instance != null && RoundManager.Instance.IsRoundActive())
             return false;
 
+        if (selectedSlot == lockedSlotIndex) return false;
+
         TowerSO selected = loadout[selectedSlot];
         if (selected == null || selected.towerPrefab == null) return false;
 
-        if (ScoreManager.Instance == null) return false;
+        // Card consumption: placing a tower spends one owned copy of it. With
+        // none left, the slot can't place again until another is bought.
+        if (PlayerTowerInventory.Instance == null || !PlayerTowerInventory.Instance.HasTower(selected))
+            return false;
 
         Vector2 worldPos = GetSnappedMouseWorldPosition();
 
@@ -86,18 +131,25 @@ public static TowerPlacementManager Instance { get; private set; }
         Collider2D hit = Physics2D.OverlapCircle(worldPos, blockingRadius, blockedMask);
         if (hit != null) return false;
 
-        if (!ScoreManager.Instance.TrySpendScore(selected.cost)) return false;
-
+        // Placing from inventory is free -- the gold was already spent buying
+        // this tower card from the shop, per the game's "buy the gamble, not the placement" rule.
         GameObject towerObj = Instantiate(selected.towerPrefab, worldPos, Quaternion.identity, towerParent);
         Tower tower = towerObj.GetComponent<Tower>();
         if (tower == null)
         {
             Destroy(towerObj);
-            ScoreManager.Instance.AddScore(selected.cost);
             return false;
         }
 
         tower.Configure(selected);
+
+        PlayerTowerInventory.Instance.RemoveTower(selected);
+        if (!PlayerTowerInventory.Instance.HasTower(selected))
+        {
+            loadout[selectedSlot] = null;
+            SlotChanged?.Invoke(selectedSlot);
+        }
+
         return true;
     }
 
