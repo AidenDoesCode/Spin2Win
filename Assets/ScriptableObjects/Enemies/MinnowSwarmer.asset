@@ -22,3 +22,6 @@ MonoBehaviour:
   attackCooldown: 1
   deathPrefab: {fileID: 0}
   scoreValue: 5
+  walkAnimation: {fileID: 7400000, guid: d3262b671ef5f404c9d78bef3bc28f24, type: 2}
+  impactAnimation: {fileID: 0}
+  deathAnimation: {fileID: 7400000, guid: 999d26dba1d9a4349bcacd8555a75094, type: 2}

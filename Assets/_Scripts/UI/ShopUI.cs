@@ -342,6 +342,11 @@ public class ShopUI : MonoBehaviour
         int capturedIndex = index;
         button.onClick.AddListener(() => OnBuyClicked(capturedIndex, borderObj));
 
+        // Clicking anywhere on the card besides the Buy button itself opens
+        // the stat/description popup. No-ops for non-tower offers (buffs etc).
+        TowerCardClickHandler clickHandler = borderObj.AddComponent<TowerCardClickHandler>();
+        clickHandler.tower = offer.towerReward;
+
         if (spin)
         {
             button.interactable = false;

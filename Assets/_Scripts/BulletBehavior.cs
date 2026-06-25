@@ -5,30 +5,59 @@ public class BulletBehavior : MonoBehaviour
 {
     public float Speed = 5f;
     public int Damage = 1;
-    private Rigidbody2D rb;
-    private Vector2 initialDir = Vector2.zero;
-    private bool hasInitialDir = false;
 
-    private void Awake()
+    [Header("Animation")]
+    [Tooltip("Optional fallback looping animation on the prefab. TowerSO.projectileFlightAnimation overrides this when set.")]
+    public AnimationClip flightAnimation;
+
+    protected Rigidbody2D rb;
+    private Vector2 initialDir = Vector2.zero;
+    private bool hasInitialDir;
+    private AnimationClipPlayer animPlayer;
+
+    protected virtual void Awake()
     {
         rb = GetComponent<Rigidbody2D>();
     }
 
-    private void Start()
+    public void SetFlightAnimation(AnimationClip clip)
     {
-        // Use local up as forward for top-down sprites. If a spawn-set initial
-        // direction was provided, use that instead.
+        if (clip == null) return;
+        flightAnimation = clip;
+        EnsureAnimPlayer();
+        animPlayer.Play(flightAnimation, loop: true);
+    }
+
+    private void EnsureAnimPlayer()
+    {
+        if (animPlayer != null || flightAnimation == null) return;
+
+        SpriteRenderer sr = GetComponentInChildren<SpriteRenderer>();
+        GameObject visual = sr != null ? sr.gameObject : gameObject;
+        animPlayer = new AnimationClipPlayer(visual);
+    }
+
+    protected virtual void Start()
+    {
         if (hasInitialDir)
             rb.linearVelocity = initialDir.normalized * Speed;
         else
             rb.linearVelocity = transform.up * Speed;
+
+        EnsureAnimPlayer();
+        if (animPlayer != null)
+            animPlayer.Play(flightAnimation, loop: true);
     }
 
-    private void FixedUpdate()
+    protected virtual void Update()
+    {
+        animPlayer?.Tick(Time.deltaTime);
+    }
+
+    protected virtual void FixedUpdate()
     {
         if (rb == null) return;
 
-        // Maintain consistent speed in case physics changes velocity
         if (rb.linearVelocity.sqrMagnitude > 0f)
             rb.linearVelocity = rb.linearVelocity.normalized * Speed;
         else if (hasInitialDir)
@@ -37,8 +66,12 @@ public class BulletBehavior : MonoBehaviour
             rb.linearVelocity = transform.up * Speed;
     }
 
-    // Called by spawner to set an explicit direction (world-space)
-    public void SetDirection(Vector2 dir)
+    protected virtual void OnDestroy()
+    {
+        animPlayer?.Dispose();
+    }
+
+    public virtual void SetDirection(Vector2 dir)
     {
         if (rb == null) rb = GetComponent<Rigidbody2D>();
         initialDir = dir;
@@ -46,39 +79,41 @@ public class BulletBehavior : MonoBehaviour
         rb.linearVelocity = initialDir.normalized * Speed;
     }
 
+    protected bool ShouldIgnoreCollider(Collider2D other)
+    {
+        if (other == null) return true;
+        if (other.GetComponent<BulletBehavior>() != null) return true;
+
+        int arenaLayer = LayerMask.NameToLayer("Arena");
+        return arenaLayer >= 0 && other.gameObject.layer == arenaLayer;
+    }
+
+    protected Enemy GetEnemyFromCollider(Collider2D other)
+    {
+        if (other == null || ShouldIgnoreCollider(other)) return null;
+        return other.GetComponent<Enemy>();
+    }
+
+    protected virtual void OnHitEnemy(Enemy enemy)
+    {
+        if (enemy == null) return;
+        enemy.TakeDamage(Damage);
+        DestroyProjectile();
+    }
+
+    protected void DestroyProjectile()
+    {
+        Destroy(gameObject);
+    }
+
     private void OnTriggerEnter2D(Collider2D other)
     {
-        if (other == null) return;
-        // Ignore other projectiles
-        if (other.GetComponent<BulletBehavior>() != null) return;
-        // Ignore arena collisions
-        int arenaLayer = LayerMask.NameToLayer("Arena");
-        if (arenaLayer >= 0 && other.gameObject.layer == arenaLayer) return;
-
-        // Only interact with enemies — ignore everything else
-        var enemy = other.GetComponent<Enemy>();
-        if (enemy != null)
-        {
-            enemy.TakeDamage(Damage);
-            Destroy(gameObject);
-        }
+        OnHitEnemy(GetEnemyFromCollider(other));
     }
 
     private void OnCollisionEnter2D(Collision2D collision)
     {
         if (collision == null || collision.collider == null) return;
-        // Ignore other projectiles
-        if (collision.collider.GetComponent<BulletBehavior>() != null) return;
-        // Ignore arena collisions
-        int arenaLayer = LayerMask.NameToLayer("Arena");
-        if (arenaLayer >= 0 && collision.collider.gameObject.layer == arenaLayer) return;
-
-        // Only interact with enemies — ignore everything else
-        var enemy = collision.collider.GetComponent<Enemy>();
-        if (enemy != null)
-        {
-            enemy.TakeDamage(Damage);
-            Destroy(gameObject);
-        }
+        OnHitEnemy(GetEnemyFromCollider(collision.collider));
     }
 }

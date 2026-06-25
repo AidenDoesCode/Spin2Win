@@ -15,6 +15,10 @@ public class Enemy : MonoBehaviour
     [HideInInspector] public float speedMultiplier = 1f;
     [HideInInspector] public float damageMultiplier = 1f;
     private float obstacleSlowMultiplier = 1f;
+    private bool isDead;
+
+    private AnimationClipPlayer animPlayer;
+    private bool playingImpactAnimation;
 
     [Tooltip("Distance to a waypoint before the enemy advances to the next one along the path")]
     public float waypointReachedDistance = 0.15f;
@@ -39,11 +43,16 @@ public class Enemy : MonoBehaviour
             }
             activeColliders.Add(col);
         }
+
+        SpriteRenderer sr = GetComponentInChildren<SpriteRenderer>();
+        GameObject visual = sr != null ? sr.gameObject : gameObject;
+        animPlayer = new AnimationClipPlayer(visual);
     }
 
     private void OnDestroy()
     {
         if (col != null) activeColliders.Remove(col);
+        animPlayer?.Dispose();
     }
 
     private void Start()
@@ -69,10 +78,22 @@ public class Enemy : MonoBehaviour
         {
             currentWaypoint = EnemyPathfinder.Instance.GetNextWaypoint(transform.position);
         }
+
+        if (data != null && data.walkAnimation != null)
+            animPlayer.Play(data.walkAnimation, loop: true);
     }
 
     private void Update()
     {
+        bool finished = animPlayer.Tick(Time.deltaTime);
+        if (finished && playingImpactAnimation)
+        {
+            playingImpactAnimation = false;
+            if (!isDead && data != null && data.walkAnimation != null)
+                animPlayer.Play(data.walkAnimation, loop: true);
+        }
+
+        if (isDead) return;
         if (data == null) return;
 
         if (targetBase != null)
@@ -116,6 +137,12 @@ public class Enemy : MonoBehaviour
 
     private void FixedUpdate()
     {
+        if (isDead)
+        {
+            rb.linearVelocity = Vector2.zero;
+            return;
+        }
+
         if (targetBase != null && targetBase.IsDead)
         {
             rb.linearVelocity = Vector2.zero;
@@ -135,11 +162,29 @@ public class Enemy : MonoBehaviour
     public void ApplyObstacleSlow(float multiplier) => obstacleSlowMultiplier = Mathf.Clamp(multiplier, 0f, 1f);
     public void ClearObstacleSlow() => obstacleSlowMultiplier = 1f;
 
-    public void TakeDamage(int amount)
+    public void TakeDamage(int amount, AnimationClip overlayImpact = null)
     {
-        if (data == null) return;
+        if (data == null || isDead) return;
         currentHealth -= amount;
-        if (currentHealth <= 0) Die();
+
+        if (overlayImpact != null)
+            OverlayAnimationEffect.PlayAt(transform, overlayImpact);
+
+        if (currentHealth <= 0)
+        {
+            Die();
+            return;
+        }
+
+        if (overlayImpact == null)
+            PlayImpactAnimation();
+    }
+
+    private void PlayImpactAnimation()
+    {
+        if (data == null || data.impactAnimation == null) return;
+        playingImpactAnimation = true;
+        animPlayer.Play(data.impactAnimation, loop: false);
     }
 
     // Reaching the base is a leak, not a kill: no score, no death prefab,
@@ -160,6 +205,10 @@ public class Enemy : MonoBehaviour
 
     private void Die()
     {
+        if (isDead) return;
+        isDead = true;
+        playingImpactAnimation = false;
+
         if (data != null && data.deathPrefab != null)
         {
             Instantiate(data.deathPrefab, transform.position, Quaternion.identity);
@@ -184,6 +233,19 @@ public class Enemy : MonoBehaviour
                 Debug.LogWarning("Enemy died but RoundManager not found to notify.");
             }
         }
-        Destroy(gameObject);
+
+        // Stop colliding immediately so a "dead" enemy can't still block or
+        // hurt anything while its death animation plays out.
+        if (col != null) col.enabled = false;
+
+        if (data != null && data.deathAnimation != null)
+        {
+            animPlayer.Play(data.deathAnimation, loop: false);
+            Destroy(gameObject, data.deathAnimation.length);
+        }
+        else
+        {
+            Destroy(gameObject);
+        }
     }
 }

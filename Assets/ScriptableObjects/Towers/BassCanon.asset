@@ -12,13 +12,19 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: cb0ef06883d994ed6871027fef574160, type: 3}
   m_Name: BassCanon
   m_EditorClassIdentifier: Assembly-CSharp::TowerSO
-  towerName: BassCanon
+  towerName: Bass Cannon
   cost: 75
   range: 3.5
-  icon: {fileID: 7943707647013513025, guid: 9bd0d901e76acd444839042539b358b5, type: 3}
+  icon: {fileID: 3505091606767975599, guid: a92d41d76a7df4d269abba62221997c0, type: 3}
+  description: A bass fish mounted to a sub-woofer that drops heavy audio bass drops to blast enemies.
   rotationSpeed: 60
   fireRate: 0.5
   projectileSpeed: 12
   damage: 5
-  projectilePrefab: {fileID: 299504703514488645, guid: a99ca28d3f6c0a1408b87c52de3176be, type: 3}
+  isMelee: 0
+  projectilePrefab: {fileID: 299504703514488645, guid: 2778266216f947d8bee69a39113dfb57, type: 3}
   towerPrefab: {fileID: 3874816204346800925, guid: 681100dc363bc411b855364da738b3a2, type: 3}
+  idleAnimation: {fileID: 7400000, guid: fae27a27d4e7c458fbd56e22ad2a0266, type: 2}
+  fireAnimation: {fileID: 7400000, guid: 18edbde3343b84db89be395398db4b51, type: 2}
+  meleeImpactAnimation: {fileID: 0}
+  projectileFlightAnimation: {fileID: 7400000, guid: 39e4a62f1789f467084a575d6b020cf3, type: 2}

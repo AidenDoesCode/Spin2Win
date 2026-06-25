@@ -28,6 +28,7 @@ public class LoadoutBarUI : MonoBehaviour
     private Image[] slotIcons     = new Image[5];
     private TextMeshProUGUI[] countLabels = new TextMeshProUGUI[5];
     private TowerDragUI[] slotDrags = new TowerDragUI[5];
+    private TowerCardClickHandler[] slotClickHandlers = new TowerCardClickHandler[5];
     private int currentSelected  = 0;
     private int currentLocked    = -1;
 
@@ -132,6 +133,9 @@ public class LoadoutBarUI : MonoBehaviour
 
             // Lets the player drag the assigned tower out of this slot (e.g. to the trash)
             slotDrags[i] = iconObj.AddComponent<TowerDragUI>();
+
+            // Clicking (without dragging) opens the stat/description popup
+            slotClickHandlers[i] = iconObj.AddComponent<TowerCardClickHandler>();
 
             // Owned-copies count badge (card consumption: shows how many placements are left)
             GameObject countObj = new GameObject($"Count_{i + 1}");
@@ -243,6 +247,7 @@ public class LoadoutBarUI : MonoBehaviour
         if (icon == null) return;
 
         if (slotDrags[index] != null) slotDrags[index].tower = tower;
+        if (slotClickHandlers[index] != null) slotClickHandlers[index].tower = tower;
 
         if (tower != null && tower.icon != null)
         {

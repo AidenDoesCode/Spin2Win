@@ -16,9 +16,15 @@ MonoBehaviour:
   cost: 20
   range: 1.5
   icon: {fileID: 7943707647013513025, guid: 9bd0d901e76acd444839042539b358b5, type: 3}
+  description: A mechanical arm holding a raw salmon that rapidly slaps enemies silly as they pass right in front of it.
   rotationSpeed: 180
   fireRate: 2.5
   projectileSpeed: 15
   damage: 2
-  projectilePrefab: {fileID: 299504703514488645, guid: a99ca28d3f6c0a1408b87c52de3176be, type: 3}
+  isMelee: 1
+  projectilePrefab: {fileID: 299504703514488645, guid: 4132156e4b7040cf8de80b1162f73300, type: 3}
   towerPrefab: {fileID: 3874816204346800925, guid: 681100dc363bc411b855364da738b3a2, type: 3}
+  idleAnimation: {fileID: 7400000, guid: 3f1e7cee0f7f6494ea948454fa176d0b, type: 2}
+  fireAnimation: {fileID: 7400000, guid: 623d618ffac8f4efebd917f1fafb9060, type: 2}
+  meleeImpactAnimation: {fileID: 0}
+  projectileFlightAnimation: {fileID: 0}

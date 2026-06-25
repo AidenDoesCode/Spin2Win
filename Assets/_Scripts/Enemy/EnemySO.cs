@@ -14,4 +14,12 @@ public class EnemySO : ScriptableObject
     public float attackCooldown = 1f;
     public GameObject deathPrefab;
     public int scoreValue = 10;
+
+    [Header("Animation")]
+    [Tooltip("Looping animation played while this enemy is alive and moving.")]
+    public AnimationClip walkAnimation;
+    [Tooltip("Plays once when this enemy is hit by a projectile or melee attack.")]
+    public AnimationClip impactAnimation;
+    [Tooltip("Plays once when this enemy dies, before it's removed.")]
+    public AnimationClip deathAnimation;
 }

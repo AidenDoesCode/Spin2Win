@@ -25,7 +25,7 @@ Transform:
   m_GameObject: {fileID: 3757610572846514766}
   serializedVersion: 2
   m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
-  m_LocalPosition: {x: 0.51, y: 0.36, z: 0}
+  m_LocalPosition: {x: -0.441, y: 0.027, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -42,7 +42,7 @@ GameObject:
   - component: {fileID: 1691148965528445107}
   - component: {fileID: 3292950480659768315}
   - component: {fileID: 1701506244435242329}
-  - component: {fileID: 6906244339837564267}
+  - component: {fileID: 7608970514058681351}
   m_Layer: 9
   m_Name: Basscanon
   m_TagString: Untagged
@@ -115,7 +115,7 @@ SpriteRenderer:
   m_SortingLayer: 0
   m_SortingOrder: 0
   m_MaskInteraction: 0
-  m_Sprite: {fileID: 7943707647013513025, guid: 9bd0d901e76acd444839042539b358b5, type: 3}
+  m_Sprite: {fileID: 3505091606767975599, guid: a92d41d76a7df4d269abba62221997c0, type: 3}
   m_Color: {r: 1, g: 1, b: 1, a: 1}
   m_FlipX: 0
   m_FlipY: 0
@@ -140,7 +140,7 @@ MonoBehaviour:
   data: {fileID: 11400000, guid: e2be2b397f6624455b79b0832cf3c247, type: 2}
   firePoint: {fileID: 3460057550047081209}
   barrelLength: 0.5
---- !u!61 &6906244339837564267
+--- !u!61 &7608970514058681351
 BoxCollider2D:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -174,15 +174,15 @@ BoxCollider2D:
   m_UsedByEffector: 0
   m_CompositeOperation: 0
   m_CompositeOrder: 0
-  m_Offset: {x: 0.09375, y: 0.25}
+  m_Offset: {x: -0.0022212863, y: 0.013327718}
   m_SpriteTilingProperty:
     border: {x: 0, y: 0, z: 0, w: 0}
-    pivot: {x: 0.36363637, y: 0}
-    oldSize: {x: 0.6875, y: 0.5}
+    pivot: {x: 0.5, y: 0.5}
+    oldSize: {x: 1, y: 1}
     newSize: {x: 0.11, y: 0.08}
     adaptiveTilingThreshold: 0.5
     drawMode: 0
     adaptiveTiling: 0
   m_AutoTiling: 0
-  m_Size: {x: 0.6875, y: 0.5}
+  m_Size: {x: 0.7645439, y: 0.5468581}
   m_EdgeRadius: 0

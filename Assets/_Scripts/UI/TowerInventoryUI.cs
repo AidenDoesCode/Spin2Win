@@ -142,6 +142,10 @@ public class TowerInventoryUI : MonoBehaviour
         TowerDragUI drag = borderObj.AddComponent<TowerDragUI>();
         drag.tower = tower;
 
+        // Clicking (without dragging) opens the stat/description popup
+        TowerCardClickHandler clickHandler = borderObj.AddComponent<TowerCardClickHandler>();
+        clickHandler.tower = tower;
+
         return borderObj;
     }
 

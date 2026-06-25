@@ -16,9 +16,15 @@ MonoBehaviour:
   cost: 110
   range: 3
   icon: {fileID: 7943707647013513025, guid: 9bd0d901e76acd444839042539b358b5, type: 3}
+  description: An incredibly caffeinated electric eel coiled around a battery, zapping anything that walks by.
   rotationSpeed: 360
   fireRate: 3
   projectileSpeed: 20
   damage: 1
-  projectilePrefab: {fileID: 299504703514488645, guid: a99ca28d3f6c0a1408b87c52de3176be, type: 3}
+  isMelee: 0
+  projectilePrefab: {fileID: 299504703514488645, guid: b0a3ac5e99814117aebaeb9dd759514f, type: 3}
   towerPrefab: {fileID: 3874816204346800925, guid: 681100dc363bc411b855364da738b3a2, type: 3}
+  idleAnimation: {fileID: 7400000, guid: 1eaa93ae34bc34fd8903d1394fd811bd, type: 2}
+  fireAnimation: {fileID: 7400000, guid: eb47840e683b04058b9e5b7bc66c7d20, type: 2}
+  meleeImpactAnimation: {fileID: 0}
+  projectileFlightAnimation: {fileID: 7400000, guid: b08281dbe25524b949e884e2fee7391a, type: 2}
