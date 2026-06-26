@@ -15,7 +15,7 @@ MonoBehaviour:
   enemyName: Minnow Swarmer
   pointCost: 1
   maxHealth: 1
-  damage: 20
+  damage: 1
   moveSpeed: 3.5
   detectionRadius: 10
   attackRange: 1

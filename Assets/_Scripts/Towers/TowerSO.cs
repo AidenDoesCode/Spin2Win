@@ -27,6 +27,14 @@ public class TowerSO : ScriptableObject
     public BulletBehavior projectilePrefab;
     public GameObject towerPrefab;
 
+    // ADDED: screen-shake-on-impact settings, handed down to the projectile
+    // (Tower.FireAt) and triggered there on hit/explosion.
+    [Header("Polish - Screen Shake")]
+    [Tooltip("Triggers a camera shake when this tower's projectile hits/explodes (Bass Cannon, Puffer Hurler, etc).")]
+    public bool screenShakeOnImpact = false;
+    public float shakeDuration = 0.1f;
+    public float shakeMagnitude = 0.05f;
+
     [Header("Visual")]
     [Tooltip("Scales up the whole tower (sprite + firePoint + collider) for visibility. The placement ghost preview reads this too, so it matches the placed tower's actual size.")]
     public float visualScaleMultiplier = 3f;

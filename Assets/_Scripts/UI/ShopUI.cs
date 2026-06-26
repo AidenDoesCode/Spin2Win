@@ -362,11 +362,13 @@ public class ShopUI : MonoBehaviour
         labelObj.transform.SetParent(innerObj.transform, false);
         RectTransform labelRT = labelObj.AddComponent<RectTransform>();
         labelRT.anchorMin = new Vector2(0f, 0.7f);
-        labelRT.anchorMax = new Vector2(1f, 1f);
+        // Narrowed from full width (1f) so the lock badge has its own clear
+        // corner at top-right instead of sitting on top of the name text.
+        labelRT.anchorMax = new Vector2(0.76f, 1f);
         labelRT.offsetMin = labelRT.offsetMax = Vector2.zero;
         var label = labelObj.AddComponent<TextMeshProUGUI>();
         label.fontSize = 35;
-        label.alignment = TextAlignmentOptions.Top;
+        label.alignment = TextAlignmentOptions.TopLeft;
         label.color = cardTextColor;
 
         GameObject costObj = new GameObject("Cost");
@@ -411,8 +413,10 @@ public class ShopUI : MonoBehaviour
         GameObject lockObj = new GameObject("LockButton");
         lockObj.transform.SetParent(innerObj.transform, false);
         RectTransform lockRT = lockObj.AddComponent<RectTransform>();
-        lockRT.anchorMin = new Vector2(0.72f, 0.93f);
-        lockRT.anchorMax = new Vector2(0.96f, 1f);
+        // Sits in the corner freed up by narrowing the name label above, so
+        // it never overlaps the tower name text.
+        lockRT.anchorMin = new Vector2(0.78f, 0.86f);
+        lockRT.anchorMax = new Vector2(0.98f, 1f);
         lockRT.offsetMin = lockRT.offsetMax = Vector2.zero;
         Image lockImg = lockObj.AddComponent<Image>();
         lockImg.color = isLocked ? rerollButtonColor : purchasedColor;
@@ -525,7 +529,8 @@ public class ShopUI : MonoBehaviour
                 costLabel.text = $"{randomOffer.cost} pts";
                 costLabel.color = affordableColor;
 
-                Sprite randomIcon = randomOffer.towerReward != null ? randomOffer.towerReward.icon : null;
+                Sprite randomIcon = randomOffer.icon != null ? randomOffer.icon
+                    : (randomOffer.towerReward != null ? randomOffer.towerReward.icon : null);
                 iconImg.sprite = randomIcon;
                 iconImg.enabled = randomIcon != null;
             }
@@ -546,7 +551,8 @@ public class ShopUI : MonoBehaviour
         costLabel.text = $"{offer.cost} pts";
         costLabel.color = canAfford ? affordableColor : unaffordableColor;
 
-        Sprite icon = offer.towerReward != null ? offer.towerReward.icon : null;
+        Sprite icon = offer.icon != null ? offer.icon
+            : (offer.towerReward != null ? offer.towerReward.icon : null);
         iconImg.sprite = icon;
         iconImg.enabled = icon != null;
 

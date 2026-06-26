@@ -64,6 +64,17 @@ public class BaseHealth : MonoBehaviour
         NotifyHealthChanged();
     }
 
+    // All-In Multiplier's downside -- permanently shrinks the health pool,
+    // clamping current health down with it if it no longer fits.
+    public void ReduceMaxHealth(int amount)
+    {
+        if (amount <= 0) return;
+
+        maxHealth = Mathf.Max(1, maxHealth - amount);
+        CurrentHealth = Mathf.Min(CurrentHealth, maxHealth);
+        NotifyHealthChanged();
+    }
+
     // Drives both the HealthChanged UI subscribers (bar, screen tint) and
     // MusicManager's low-health tension effect from a single source of truth.
     private void NotifyHealthChanged()

@@ -36,6 +36,8 @@ public class SoundwaveBulletBehavior : BulletBehavior
         enemy.TakeDamage(Damage);
         pierceCount++;
 
+        if (pierceCount == 1) TriggerShake(); // ADDED: shake once per wave, on its first hit
+
         if (maxPierceCount > 0 && pierceCount >= maxPierceCount)
             DestroyProjectile();
     }

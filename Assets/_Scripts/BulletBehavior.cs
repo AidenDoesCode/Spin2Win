@@ -14,6 +14,12 @@ public class BulletBehavior : MonoBehaviour
     [Tooltip("Optional fallback looping animation on the prefab. TowerSO.projectileFlightAnimation overrides this when set.")]
     public AnimationClip flightAnimation;
 
+    // ADDED: screen-shake-on-impact, set by Tower.FireAt() from the firing TowerSO.
+    [Header("Polish - Screen Shake")]
+    public bool screenShakeOnImpact = false;
+    public float shakeDuration = 0.1f;
+    public float shakeMagnitude = 0.05f;
+
     protected Rigidbody2D rb;
     private Vector2 initialDir = Vector2.zero;
     private bool hasInitialDir;
@@ -106,7 +112,16 @@ public class BulletBehavior : MonoBehaviour
         if (impactSound != null)
             AudioSource.PlayClipAtPoint(impactSound, transform.position, impactVolume * SfxSettings.Volume);
 
+        TriggerShake(); // ADDED
         DestroyProjectile();
+    }
+
+    // ADDED: shared by base OnHitEnemy and the AoE subclasses' own
+    // detonate/pierce logic (which override OnHitEnemy without calling base).
+    protected void TriggerShake()
+    {
+        if (screenShakeOnImpact && CameraShake.Instance != null)
+            CameraShake.Instance.Shake(shakeDuration, shakeMagnitude);
     }
 
     protected void DestroyProjectile()

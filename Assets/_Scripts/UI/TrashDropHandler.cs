@@ -28,5 +28,9 @@ public class TrashDropHandler : MonoBehaviour, IDropHandler
 
         int refund = Mathf.RoundToInt(tower.cost * refundPercent);
         ScoreManager.Instance?.AddScore(refund);
+
+        // Riptide Counter-Current -- selling/recycling a tower card triggers
+        // the map-wide shockwave, if that upgrade's been bought.
+        GameModifiers.Instance?.TriggerSellExplosionIfEnabled();
     }
 }

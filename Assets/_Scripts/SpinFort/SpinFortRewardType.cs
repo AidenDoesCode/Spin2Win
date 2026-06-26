@@ -6,5 +6,13 @@ public enum SpinFortRewardType
     MovementSpeedBuff,
     HealPlayer,
     BonusEnemiesNextRound,
-    Tower
+    Tower,
+    BaseHeal,
+    GlobalAttackSpeed,
+    GlobalTowerRange,
+    RerollDiscount,
+    GlobalTowerDamage,
+    GoldPerRoundGain,
+    AllInMultiplier,
+    TowersExplodeOnDeath
 }

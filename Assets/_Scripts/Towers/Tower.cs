@@ -20,6 +20,38 @@ public class Tower : MonoBehaviour
     private AnimationClipPlayer animPlayer;
     private bool playingFireAnimation;
     private AudioSource audioSource;
+    private SpriteSquash squash;
+
+    // Flat per-instance damage bonus -- separate from TowerSO.damage (a
+    // shared asset) so a one-off effect like All-In Multiplier can buff a
+    // single placed tower without affecting every other tower of that type.
+    private int instanceDamageBonus;
+
+    public int EffectiveDamage => (data != null ? data.damage : 0) + instanceDamageBonus +
+        (GameModifiers.Instance != null ? GameModifiers.Instance.globalDamageBonus : 0);
+    public float EffectiveRange => data != null
+        ? data.range * (GameModifiers.Instance != null ? GameModifiers.Instance.globalRangeMultiplier : 1f)
+        : 0f;
+    public float EffectiveFireRate => data != null
+        ? data.fireRate * (GameModifiers.Instance != null ? GameModifiers.Instance.globalAttackSpeedMultiplier : 1f)
+        : 0f;
+
+    public void AddInstanceDamageBonus(int amount) => instanceDamageBonus += amount;
+
+    // Sells this placed tower for a partial refund and removes it from the
+    // grid -- triggers Riptide Counter-Current's sell explosion if bought.
+    public void Sell(float refundPercent)
+    {
+        if (data != null)
+        {
+            int refund = Mathf.RoundToInt(data.cost * refundPercent);
+            ScoreManager.Instance?.AddScore(refund);
+            FloatingText.Spawn(transform.position, $"+{refund}g", new Color(1f, 0.8431f, 0f));
+        }
+
+        GameModifiers.Instance?.TriggerSellExplosionIfEnabled();
+        Destroy(gameObject);
+    }
 
     private void Awake()
     {
@@ -69,6 +101,17 @@ public class Tower : MonoBehaviour
         ApplyVisualRotation(currentAngle);
     }
 
+    // ADDED: squash-and-stretch pop, played on the sprite's own visual
+    // transform so it doesn't fight the flip-mirror trick in
+    // ApplyVisualRotation. Called on successful placement and on melee hits.
+    public void PlaySquash()
+    {
+        if (visualTransform == null) return;
+
+        if (squash == null) squash = visualTransform.gameObject.AddComponent<SpriteSquash>();
+        squash.Play();
+    }
+
     // Renders currentAngle without ever rotating the sprite past vertical --
     // folds the angle into the right-facing half and mirrors (localScale.x)
     // for the left half instead, so the single top-down sprite never looks
@@ -110,7 +153,7 @@ public class Tower : MonoBehaviour
         if (!isAimed || Time.time < nextShotTime)
             return;
 
-        nextShotTime = Time.time + (1f / Mathf.Max(0.0001f, data.fireRate));
+        nextShotTime = Time.time + (1f / Mathf.Max(0.0001f, EffectiveFireRate));
         FireAt(target);
     }
 
@@ -144,7 +187,7 @@ public class Tower : MonoBehaviour
         Enemy[] enemies = Object.FindObjectsByType<Enemy>();
         Enemy closest = null;
         float closestDistSqr = float.MaxValue;
-        float rangeSqr = data.range * data.range;
+        float rangeSqr = EffectiveRange * EffectiveRange;
 
         for (int i = 0; i < enemies.Length; i++)
         {
@@ -205,7 +248,10 @@ public class Tower : MonoBehaviour
         if (data.isMelee)
         {
             if (target != null)
-                target.TakeDamage(data.damage, data.meleeImpactAnimation);
+            {
+                target.TakeDamage(EffectiveDamage, data.meleeImpactAnimation);
+                PlaySquash(); // ADDED: squash pop when the melee hit lands
+            }
             return;
         }
 
@@ -223,9 +269,13 @@ public class Tower : MonoBehaviour
 
         projectile.transform.localScale *= data.visualScaleMultiplier * data.projectileScaleRatio;
         projectile.Speed = data.projectileSpeed;
-        projectile.Damage = data.damage;
+        projectile.Damage = EffectiveDamage;
         projectile.impactSound = data.impactSound;
         projectile.impactVolume = data.impactVolume;
+        // ADDED: hands the screen-shake-on-impact settings down from the TowerSO.
+        projectile.screenShakeOnImpact = data.screenShakeOnImpact;
+        projectile.shakeDuration = data.shakeDuration;
+        projectile.shakeMagnitude = data.shakeMagnitude;
         projectile.SetDirection((target.transform.position - spawnPos).normalized);
 
         if (data.projectileFlightAnimation != null)

@@ -36,3 +36,6 @@ MonoBehaviour:
   fireAnimation: {fileID: 7400000, guid: 18edbde3343b84db89be395398db4b51, type: 2}
   meleeImpactAnimation: {fileID: 0}
   projectileFlightAnimation: {fileID: 7400000, guid: 39e4a62f1789f467084a575d6b020cf3, type: 2}
+  screenShakeOnImpact: 1
+  shakeDuration: 0.1
+  shakeMagnitude: 0.05

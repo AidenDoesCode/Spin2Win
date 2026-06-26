@@ -14,8 +14,8 @@ public class Enemy : MonoBehaviour
     [HideInInspector] public float healthMultiplier = 1f;
     [HideInInspector] public float speedMultiplier = 1f;
     [HideInInspector] public float damageMultiplier = 1f;
-    private float obstacleSlowMultiplier = 1f;
     private bool isDead;
+    private float stunnedUntil;
 
     private AnimationClipPlayer animPlayer;
     private bool playingImpactAnimation;
@@ -182,9 +182,15 @@ public class Enemy : MonoBehaviour
             return;
         }
 
+        if (Time.time < stunnedUntil)
+        {
+            rb.linearVelocity = Vector2.zero;
+            return;
+        }
+
         if (target && data != null)
         {
-            rb.linearVelocity = movementDirection * (data.moveSpeed * speedMultiplier * obstacleSlowMultiplier);
+            rb.linearVelocity = movementDirection * (data.moveSpeed * speedMultiplier);
         }
     }
 
@@ -192,8 +198,13 @@ public class Enemy : MonoBehaviour
     // shared enemy prefab can be spawned as any EnemySO type from the budget pool.
     public void Configure(EnemySO enemyData) => data = enemyData;
 
-    public void ApplyObstacleSlow(float multiplier) => obstacleSlowMultiplier = Mathf.Clamp(multiplier, 0f, 1f);
-    public void ClearObstacleSlow() => obstacleSlowMultiplier = 1f;
+    // Riptide Counter-Current's stun. Freezes movement (but not death/damage)
+    // for the given duration; stacking calls only extend, never shorten it.
+    public void Stun(float duration)
+    {
+        if (duration <= 0f || isDead) return;
+        stunnedUntil = Mathf.Max(stunnedUntil, Time.time + duration);
+    }
 
     public void TakeDamage(int amount, AnimationClip overlayImpact = null)
     {
@@ -249,6 +260,9 @@ public class Enemy : MonoBehaviour
         if (ScoreManager.Instance != null && data != null)
         {
             ScoreManager.Instance.AddScore(data.scoreValue);
+
+            // ADDED: floating "+Ng" gold popup over the kill spot.
+            FloatingText.Spawn(transform.position, $"+{data.scoreValue}g", new Color(1f, 0.8431f, 0f));
         }
         if (deathSound != null)
         {

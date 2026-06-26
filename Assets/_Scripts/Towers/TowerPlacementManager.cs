@@ -44,6 +44,10 @@ public static TowerPlacementManager Instance { get; private set; }
     public TowerSO[] loadout = new TowerSO[5];
     public int selectedSlot = 0;
 
+    [Header("Selling")]
+    [Tooltip("Fraction of a tower's buy cost refunded when right-clicking it off the grid.")]
+    [Range(0f, 1f)] public float placedTowerRefundPercent = 0.5f;
+
     [Header("Audio")]
     [Tooltip("Soft plop/thud played when a tower is successfully dropped onto a grid tile.")]
     public AudioClip placeSound;
@@ -87,6 +91,32 @@ public static TowerPlacementManager Instance { get; private set; }
 
         if (Mouse.current != null && Mouse.current.leftButton.wasPressedThisFrame)
             TryPlaceSelectedTower();
+
+        if (Mouse.current != null && Mouse.current.rightButton.wasPressedThisFrame)
+            TrySellTowerAtMouse();
+    }
+
+    // Right-click sells whatever placed tower is under the cursor, refunding
+    // part of its buy cost. Same phase lock as placement -- selling mid-wave
+    // would let players dodge a hit they already paid to be ready for.
+    public bool TrySellTowerAtMouse()
+    {
+        if (EventSystem.current != null && EventSystem.current.IsPointerOverGameObject())
+            return false;
+
+        if (placementCamera == null) return false;
+        if (RoundManager.Instance != null && RoundManager.Instance.IsRoundActive())
+            return false;
+
+        Vector2 worldPos = GetSnappedMouseWorldPosition();
+        Collider2D hit = Physics2D.OverlapCircle(worldPos, blockingRadius, blockedMask);
+        if (hit == null) return false;
+
+        Tower tower = hit.GetComponent<Tower>();
+        if (tower == null) return false;
+
+        tower.Sell(placedTowerRefundPercent);
+        return true;
     }
 
     public void SelectSlot(int index)
@@ -199,6 +229,7 @@ public static TowerPlacementManager Instance { get; private set; }
 
         tower.Configure(selected);
         tower.SetInitialRotation(pendingRotation);
+        tower.PlaySquash(); // ADDED: squash pop on successful placement
 
         PlayerTowerInventory.Instance.RemoveTower(selected);
         if (!PlayerTowerInventory.Instance.HasTower(selected))

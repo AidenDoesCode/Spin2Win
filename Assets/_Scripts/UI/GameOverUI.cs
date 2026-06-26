@@ -151,6 +151,7 @@ private void BuildUI()
         title.alignment = TextAlignmentOptions.Center;
         title.color = titleColor;
         title.fontStyle = FontStyles.Bold;
+        AddShadow(title); // ADDED
 
         // --- THE SCORE LABEL (FINAL GOLD) ---
         GameObject scoreObj = new GameObject("Score");
@@ -165,6 +166,7 @@ private void BuildUI()
         scoreLabel.fontSize = 28;
         scoreLabel.alignment = TextAlignmentOptions.Center;
         scoreLabel.color = Color.white;
+        AddShadow(scoreLabel); // ADDED
 
         // --- THE ACTION BUTTONS ---
         // Placed along the bottom row with safe vertical padding (+50f offset from floor)
@@ -198,5 +200,15 @@ private void BuildUI()
         label.fontSize = 24;
         label.alignment = TextAlignmentOptions.Center;
         label.color = Color.black;
+        AddShadow(label); // ADDED
+    }
+
+    // ADDED: attaches and enables a PixelTextShadow on the given text so every
+    // label built by this UI gets the crisp pixel-art drop shadow automatically.
+    private void AddShadow(TextMeshProUGUI text)
+    {
+        if (text == null) return;
+        var shadow = text.gameObject.AddComponent<PixelTextShadow>();
+        shadow.enableShadow = true;
     }
 }

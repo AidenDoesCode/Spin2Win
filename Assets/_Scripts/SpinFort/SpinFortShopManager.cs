@@ -18,6 +18,9 @@ public class SpinFortShopManager : MonoBehaviour
         public float floatValue = 1.15f;
         [Min(0f)] public float duration = 9999f;
         public TowerSO towerReward; // only used when rewardType == Tower
+        [Tooltip("Card art. Falls back to towerReward's icon (if any) when left empty.")]
+        public Sprite icon;
+        [TextArea(2, 4)] public string description;
     }
 
     public static SpinFortShopManager Instance { get; private set; }
@@ -100,6 +103,10 @@ public class SpinFortShopManager : MonoBehaviour
 
     private void HandleRoundFinished(int round)
     {
+        // The House Edge's payoff -- a flat gold trickle at the end of every round.
+        if (GameModifiers.Instance != null && GameModifiers.Instance.goldPerRoundBonus > 0)
+            ScoreManager.Instance?.AddScore(GameModifiers.Instance.goldPerRoundBonus);
+
         TowerPlacementManager.Instance?.LockRandomSlot();
         OpenShop();
     }
@@ -268,6 +275,64 @@ public class SpinFortShopManager : MonoBehaviour
                     Debug.LogWarning($"SpinFortShopManager: Offer '{offer.label}' is rewardType Tower but has no towerReward assigned.");
                 }
                 break;
+            case SpinFortRewardType.BaseHeal:
+                BaseHealth.Instance?.Heal(offer.intValue);
+                break;
+            case SpinFortRewardType.GlobalAttackSpeed:
+                GameModifiers.Instance?.AddAttackSpeed(offer.floatValue);
+                break;
+            case SpinFortRewardType.GlobalTowerRange:
+                GameModifiers.Instance?.AddRange(offer.floatValue);
+                break;
+            case SpinFortRewardType.RerollDiscount:
+                ApplyRerollDiscount(offer.intValue);
+                break;
+            case SpinFortRewardType.GlobalTowerDamage:
+                GameModifiers.Instance?.AddDamageBonus(offer.intValue);
+                break;
+            case SpinFortRewardType.GoldPerRoundGain:
+                GameModifiers.Instance?.AddGoldPerRound(offer.intValue);
+                break;
+            case SpinFortRewardType.AllInMultiplier:
+                ApplyAllInMultiplier(offer.floatValue, offer.intValue);
+                break;
+            case SpinFortRewardType.TowersExplodeOnDeath:
+                GameModifiers.Instance?.EnableExplodeOnSell(offer.floatValue, offer.duration);
+                break;
         }
+    }
+
+    // Loaded Dice -- permanently lowers both the running cost and the base
+    // it resets to every round.
+    private void ApplyRerollDiscount(int amount)
+    {
+        if (amount <= 0) return;
+
+        baseRerollCost = Mathf.Max(0, baseRerollCost - amount);
+        rerollCost = Mathf.Max(0, rerollCost - amount);
+    }
+
+    // All-In Multiplier -- doubles (or whatever multiplier) the single
+    // strongest currently-placed tower's damage, gambling away max base health.
+    private void ApplyAllInMultiplier(float multiplier, int maxHealthReduction)
+    {
+        Tower strongest = null;
+        int strongestDamage = -1;
+
+        foreach (Tower tower in Object.FindObjectsByType<Tower>(FindObjectsSortMode.None))
+        {
+            if (tower == null || tower.data == null) continue;
+            int effective = tower.EffectiveDamage;
+            if (effective > strongestDamage)
+            {
+                strongestDamage = effective;
+                strongest = tower;
+            }
+        }
+
+        if (strongest != null)
+            strongest.AddInstanceDamageBonus(Mathf.RoundToInt(strongestDamage * Mathf.Max(0f, multiplier - 1f)));
+
+        BaseHealth.Instance?.ReduceMaxHealth(maxHealthReduction);
     }
 }

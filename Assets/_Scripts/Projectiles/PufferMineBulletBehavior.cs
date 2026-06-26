@@ -62,6 +62,7 @@ public class PufferMineBulletBehavior : BulletBehavior
                 hitEnemy.TakeDamage(Damage);
         }
 
+        TriggerShake(); // ADDED
         DestroyProjectile();
     }
 }
