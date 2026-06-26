@@ -1,0 +1,27 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 9721b95c021e43cab32ddc8359c7831e, type: 3}
+  m_Name: AllInMultiplier
+  m_EditorClassIdentifier: Assembly-CSharp::ShopCardSO
+  label: All-In Multiplier
+  rarity: 4
+  weight: 2
+  cost: 130
+  rewardType: 13
+  intValue: 10
+  floatValue: 2
+  duration: 0
+  towerReward: {fileID: 0}
+  icon: {fileID: 7977285617948921892, guid: 1d45fbe36486540c182fa34396d42d4a, type: 3}
+  description: "High risk, ultimate reward. Automatically doubles (\xD72) the total
+    damage output of your single strongest placed tower, but permanently reduces
+    your Max Base Health by -10."

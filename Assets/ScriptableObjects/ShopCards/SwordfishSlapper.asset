@@ -1,0 +1,26 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 9721b95c021e43cab32ddc8359c7831e, type: 3}
+  m_Name: SwordfishSlapper
+  m_EditorClassIdentifier: Assembly-CSharp::ShopCardSO
+  label: Swordfish Sniper
+  rarity: 4
+  weight: 2
+  cost: 220
+  rewardType: 6
+  intValue: 0
+  floatValue: 0
+  duration: 0
+  towerReward: {fileID: 11400000, guid: 1c3b5792c5b1a473ba3ae87e2062c9b1, type: 2}
+  icon: {fileID: 0}
+  description: A swordfish wearing a tiny sniper glint scope that literally shoots
+    its own high-velocity nose-swords at targets.

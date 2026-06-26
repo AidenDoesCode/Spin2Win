@@ -1,0 +1,25 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 9721b95c021e43cab32ddc8359c7831e, type: 3}
+  m_Name: BassCanon
+  m_EditorClassIdentifier: Assembly-CSharp::ShopCardSO
+  label: Bass Canon
+  rarity: 2
+  weight: 15
+  cost: 75
+  rewardType: 6
+  intValue: 0
+  floatValue: 0
+  duration: 0
+  towerReward: {fileID: 11400000, guid: e2be2b397f6624455b79b0832cf3c247, type: 2}
+  icon: {fileID: 0}
+  description: A bass fish or is it a canon?

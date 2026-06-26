@@ -112,4 +112,10 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::FishSlapBulletBehavior
   Speed: 15
   Damage: 2
+  impactSound: {fileID: 0}
+  impactVolume: 1
+  flightAnimation: {fileID: 0}
+  screenShakeOnImpact: 0
+  shakeDuration: 0.1
+  shakeMagnitude: 0.05
   maxTravelDistance: 1.5

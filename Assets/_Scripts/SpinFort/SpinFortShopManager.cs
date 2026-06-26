@@ -4,25 +4,6 @@ using UnityEngine;
 
 public class SpinFortShopManager : MonoBehaviour
 {
-    [Serializable]
-    public class ShopOffer
-    {
-        public string label = "Upgrade";
-        [Tooltip("Drives the card's border color and sparkle intensity in the shop UI.")]
-        public CardRarity rarity = CardRarity.Common;
-        [Tooltip("Relative odds this offer gets rolled into the shop each buy phase.")]
-        [Min(0f)] public float weight = 1f;
-        [Min(0)] public int cost = 100;
-        public SpinFortRewardType rewardType = SpinFortRewardType.FireRateBuff;
-        public int intValue = 1;
-        public float floatValue = 1.15f;
-        [Min(0f)] public float duration = 9999f;
-        public TowerSO towerReward; // only used when rewardType == Tower
-        [Tooltip("Card art. Falls back to towerReward's icon (if any) when left empty.")]
-        public Sprite icon;
-        [TextArea(2, 4)] public string description;
-    }
-
     public static SpinFortShopManager Instance { get; private set; }
 
     [Header("References")]
@@ -32,7 +13,7 @@ public class SpinFortShopManager : MonoBehaviour
 
     [Header("Shop Pool")]
     [Tooltip("All possible offers the shop can draw from. Each buy phase rolls a random subset.")]
-    public List<ShopOffer> possibleOffers = new List<ShopOffer>();
+    public List<ShopCardSO> possibleOffers = new List<ShopCardSO>();
     [Min(1)] public int numOffersPerRound = 3;
 
     [Header("Spin To Reroll")]
@@ -50,7 +31,7 @@ public class SpinFortShopManager : MonoBehaviour
     // All three lists are kept at a fixed length (numOffersPerRound) so a
     // slot's index never shifts -- a null offer means that slot hasn't been
     // revealed yet (player still needs to spin).
-    public List<ShopOffer> CurrentOffers { get; } = new List<ShopOffer>();
+    public List<ShopCardSO> CurrentOffers { get; } = new List<ShopCardSO>();
     public bool IsOpen { get; private set; }
 
     private readonly List<bool> purchased = new List<bool>();
@@ -186,6 +167,11 @@ public class SpinFortShopManager : MonoBehaviour
             && PlayerTowerInventory.Instance.IsFull)
             return false;
 
+        if (offer.rewardType != SpinFortRewardType.Tower
+            && PlayerUpgradeInventory.Instance != null
+            && PlayerUpgradeInventory.Instance.IsFull)
+            return false;
+
         if (!ScoreManager.Instance.TrySpendScore(offer.cost)) return false;
 
         ApplyOffer(offer);
@@ -202,7 +188,7 @@ public class SpinFortShopManager : MonoBehaviour
         for (int i = 0; i < CurrentOffers.Count; i++)
             if (!locked[i]) rerollCount++;
 
-        List<ShopOffer> fresh = RollRandomOffers(rerollCount);
+        List<ShopCardSO> fresh = RollRandomOffers(rerollCount);
         int freshCursor = 0;
         for (int i = 0; i < CurrentOffers.Count; i++)
         {
@@ -212,10 +198,10 @@ public class SpinFortShopManager : MonoBehaviour
         }
     }
 
-    private List<ShopOffer> RollRandomOffers(int count)
+    private List<ShopCardSO> RollRandomOffers(int count)
     {
-        var result = new List<ShopOffer>();
-        var pool = new List<ShopOffer>(possibleOffers);
+        var result = new List<ShopCardSO>();
+        var pool = new List<ShopCardSO>(possibleOffers);
         pool.RemoveAll(o => o == null || o.weight <= 0f);
 
         int target = Mathf.Min(count, pool.Count);
@@ -226,7 +212,7 @@ public class SpinFortShopManager : MonoBehaviour
 
             float roll = UnityEngine.Random.value * totalWeight;
             float cursor = 0f;
-            ShopOffer picked = pool[pool.Count - 1];
+            ShopCardSO picked = pool[pool.Count - 1];
             foreach (var o in pool)
             {
                 cursor += o.weight;
@@ -240,8 +226,77 @@ public class SpinFortShopManager : MonoBehaviour
         return result;
     }
 
-    private void ApplyOffer(ShopOffer offer)
+    // Buying a card no longer applies its effect on the spot -- it becomes a
+    // consumable sitting in the player's inventory until they drag it onto a
+    // tower (GlobalAttackSpeed/Range/Damage -- see IsTowerTargetedUpgrade)
+    // or hit Use on it (everything else). Tower cards still go straight into
+    // PlayerTowerInventory exactly as before.
+    private void ApplyOffer(ShopCardSO offer)
     {
+        if (offer.rewardType == SpinFortRewardType.Tower)
+        {
+            if (offer.towerReward != null)
+            {
+                if (PlayerTowerInventory.Instance == null)
+                    Debug.LogWarning($"SpinFortShopManager: Bought '{offer.label}' but no PlayerTowerInventory exists in the scene.");
+                else
+                    PlayerTowerInventory.Instance.AddTower(offer.towerReward);
+            }
+            else
+            {
+                Debug.LogWarning($"SpinFortShopManager: Offer '{offer.label}' is rewardType Tower but has no towerReward assigned.");
+            }
+            return;
+        }
+
+        if (PlayerUpgradeInventory.Instance == null)
+            Debug.LogWarning($"SpinFortShopManager: Bought '{offer.label}' but no PlayerUpgradeInventory exists in the scene.");
+        else
+            PlayerUpgradeInventory.Instance.AddUpgrade(offer);
+    }
+
+    // GlobalAttackSpeed/GlobalTowerRange/GlobalTowerDamage keep their legacy
+    // enum names, but now apply as a per-tower bonus to whichever tower the
+    // card gets dragged onto (see Tower.AddInstance*Bonus) instead of a
+    // permanent global multiplier.
+    public static bool IsTowerTargetedUpgrade(SpinFortRewardType type) =>
+        type == SpinFortRewardType.GlobalAttackSpeed
+        || type == SpinFortRewardType.GlobalTowerRange
+        || type == SpinFortRewardType.GlobalTowerDamage;
+
+    // Called from the upgrade inventory UI when a card is dragged onto a
+    // specific placed tower. Returns false (and leaves the card in inventory)
+    // if this card type isn't tower-targeted.
+    public bool UseUpgradeOnTower(ShopCardSO offer, Tower targetTower)
+    {
+        if (offer == null || targetTower == null) return false;
+
+        switch (offer.rewardType)
+        {
+            case SpinFortRewardType.GlobalAttackSpeed:
+                targetTower.AddInstanceAttackSpeedBonus(offer.floatValue);
+                break;
+            case SpinFortRewardType.GlobalTowerRange:
+                targetTower.AddInstanceRangeBonus(offer.floatValue);
+                break;
+            case SpinFortRewardType.GlobalTowerDamage:
+                targetTower.AddInstanceDamageBonus(offer.intValue);
+                break;
+            default:
+                return false;
+        }
+
+        PlayerUpgradeInventory.Instance?.RemoveUpgrade(offer);
+        return true;
+    }
+
+    // Called from the upgrade inventory UI's Use button. Returns false (and
+    // leaves the card in inventory) if this card type needs to be dragged
+    // onto a tower instead.
+    public bool UseUpgrade(ShopCardSO offer)
+    {
+        if (offer == null || IsTowerTargetedUpgrade(offer.rewardType)) return false;
+
         switch (offer.rewardType)
         {
             case SpinFortRewardType.Points:
@@ -262,33 +317,11 @@ public class SpinFortShopManager : MonoBehaviour
             case SpinFortRewardType.BonusEnemiesNextRound:
                 roundManager?.AddBonusEnemies(Mathf.Max(0, offer.intValue));
                 break;
-            case SpinFortRewardType.Tower:
-                if (offer.towerReward != null)
-                {
-                    if (PlayerTowerInventory.Instance == null)
-                        Debug.LogWarning($"SpinFortShopManager: Bought '{offer.label}' but no PlayerTowerInventory exists in the scene.");
-                    else
-                        PlayerTowerInventory.Instance.AddTower(offer.towerReward);
-                }
-                else
-                {
-                    Debug.LogWarning($"SpinFortShopManager: Offer '{offer.label}' is rewardType Tower but has no towerReward assigned.");
-                }
-                break;
             case SpinFortRewardType.BaseHeal:
                 BaseHealth.Instance?.Heal(offer.intValue);
                 break;
-            case SpinFortRewardType.GlobalAttackSpeed:
-                GameModifiers.Instance?.AddAttackSpeed(offer.floatValue);
-                break;
-            case SpinFortRewardType.GlobalTowerRange:
-                GameModifiers.Instance?.AddRange(offer.floatValue);
-                break;
             case SpinFortRewardType.RerollDiscount:
                 ApplyRerollDiscount(offer.intValue);
-                break;
-            case SpinFortRewardType.GlobalTowerDamage:
-                GameModifiers.Instance?.AddDamageBonus(offer.intValue);
                 break;
             case SpinFortRewardType.GoldPerRoundGain:
                 GameModifiers.Instance?.AddGoldPerRound(offer.intValue);
@@ -299,7 +332,12 @@ public class SpinFortShopManager : MonoBehaviour
             case SpinFortRewardType.TowersExplodeOnDeath:
                 GameModifiers.Instance?.EnableExplodeOnSell(offer.floatValue, offer.duration);
                 break;
+            default:
+                return false;
         }
+
+        PlayerUpgradeInventory.Instance?.RemoveUpgrade(offer);
+        return true;
     }
 
     // Loaded Dice -- permanently lowers both the running cost and the base
@@ -319,7 +357,7 @@ public class SpinFortShopManager : MonoBehaviour
         Tower strongest = null;
         int strongestDamage = -1;
 
-        foreach (Tower tower in Object.FindObjectsByType<Tower>(FindObjectsSortMode.None))
+        foreach (Tower tower in UnityEngine.Object.FindObjectsByType<Tower>(FindObjectsInactive.Exclude))
         {
             if (tower == null || tower.data == null) continue;
             int effective = tower.EffectiveDamage;

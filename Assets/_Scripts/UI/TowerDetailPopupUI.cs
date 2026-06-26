@@ -63,6 +63,26 @@ public class TowerDetailPopupUI : MonoBehaviour
         transform.SetAsLastSibling();
     }
 
+    // Upgrade-card overload -- same popup, just a different stat block since
+    // ShopCardSO doesn't share TowerSO's fields. Called by ShopCardClickHandler
+    // from the shop and the upgrade inventory.
+    public void Show(ShopCardSO card)
+    {
+        if (card == null || card.rewardType == SpinFortRewardType.Tower) return;
+
+        nameLabel.text = card.label;
+        descriptionLabel.text = string.IsNullOrWhiteSpace(card.description)
+            ? "No description available."
+            : card.description;
+        statsLabel.text = BuildStatsText(card);
+
+        iconImage.sprite = card.icon;
+        iconImage.enabled = card.icon != null;
+
+        gameObject.SetActive(true);
+        transform.SetAsLastSibling();
+    }
+
     public void Hide() => gameObject.SetActive(false);
 
     private string BuildStatsText(TowerSO tower)
@@ -78,6 +98,61 @@ public class TowerDetailPopupUI : MonoBehaviour
             $"Damage: {tower.damage}\n" +
             $"{attackLine}\n" +
             $"Rotation Speed: {tower.rotationSpeed:0.##}°/s";
+    }
+
+    private string BuildStatsText(ShopCardSO card)
+    {
+        string effectLine;
+        switch (card.rewardType)
+        {
+            case SpinFortRewardType.Points:
+                effectLine = $"Gold: +{card.intValue}";
+                break;
+            case SpinFortRewardType.FireRateBuff:
+                effectLine = $"Fire Rate: x{card.floatValue:0.##} for {card.duration:0.##}s";
+                break;
+            case SpinFortRewardType.DamageBuff:
+                effectLine = $"Damage: +{card.intValue} for {card.duration:0.##}s";
+                break;
+            case SpinFortRewardType.MovementSpeedBuff:
+                effectLine = $"Move Speed: x{card.floatValue:0.##} for {card.duration:0.##}s";
+                break;
+            case SpinFortRewardType.HealPlayer:
+                effectLine = $"Heals: {card.intValue} HP";
+                break;
+            case SpinFortRewardType.BonusEnemiesNextRound:
+                effectLine = $"Next Round: +{card.intValue} enemies";
+                break;
+            case SpinFortRewardType.BaseHeal:
+                effectLine = $"Base Heal: {card.intValue} HP";
+                break;
+            case SpinFortRewardType.GlobalAttackSpeed:
+                effectLine = $"Tower Fire Rate: +{card.floatValue * 100f:0.##}% (drag onto a tower)";
+                break;
+            case SpinFortRewardType.GlobalTowerRange:
+                effectLine = $"Tower Range: +{card.floatValue * 100f:0.##}% (drag onto a tower)";
+                break;
+            case SpinFortRewardType.RerollDiscount:
+                effectLine = $"Reroll Cost: -{card.intValue}";
+                break;
+            case SpinFortRewardType.GlobalTowerDamage:
+                effectLine = $"Tower Damage: +{card.intValue} (drag onto a tower)";
+                break;
+            case SpinFortRewardType.GoldPerRoundGain:
+                effectLine = $"Gold/Round: +{card.intValue}";
+                break;
+            case SpinFortRewardType.AllInMultiplier:
+                effectLine = $"Strongest Tower Damage: x{card.floatValue:0.##}\nMax Base Health: -{card.intValue}";
+                break;
+            case SpinFortRewardType.TowersExplodeOnDeath:
+                effectLine = $"Sell Explosion: {card.floatValue:0.##} dmg, {card.duration:0.##}s stun";
+                break;
+            default:
+                effectLine = "";
+                break;
+        }
+
+        return $"Cost: {card.cost}\nRarity: {card.rarity}\n{effectLine}";
     }
 
     private void BuildBackdrop()

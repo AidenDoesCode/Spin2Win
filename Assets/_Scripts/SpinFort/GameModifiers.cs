@@ -7,11 +7,6 @@ public class GameModifiers : MonoBehaviour
 {
     public static GameModifiers Instance { get; private set; }
 
-    [Header("Tower Modifiers (stack permanently as cards are bought)")]
-    public float globalAttackSpeedMultiplier = 1f;
-    public float globalRangeMultiplier = 1f;
-    public int globalDamageBonus = 0;
-
     [Header("Economy")]
     public int goldPerRoundBonus = 0;
 
@@ -26,9 +21,6 @@ public class GameModifiers : MonoBehaviour
         else Destroy(gameObject);
     }
 
-    public void AddAttackSpeed(float fractionalIncrease) => globalAttackSpeedMultiplier += fractionalIncrease;
-    public void AddRange(float fractionalIncrease) => globalRangeMultiplier += fractionalIncrease;
-    public void AddDamageBonus(int amount) => globalDamageBonus += amount;
     public void AddGoldPerRound(int amount) => goldPerRoundBonus += amount;
 
     public void EnableExplodeOnSell(float damage, float stunDuration)
@@ -44,7 +36,7 @@ public class GameModifiers : MonoBehaviour
     {
         if (!explodeOnSellEnabled) return;
 
-        foreach (Enemy enemy in Object.FindObjectsByType<Enemy>(FindObjectsSortMode.None))
+        foreach (Enemy enemy in Object.FindObjectsByType<Enemy>(FindObjectsInactive.Exclude))
         {
             if (enemy == null) continue;
             enemy.TakeDamage(Mathf.RoundToInt(explodeOnSellDamage));

@@ -87,6 +87,14 @@ public class BulletBehavior : MonoBehaviour
         initialDir = dir;
         hasInitialDir = true;
         rb.linearVelocity = initialDir.normalized * Speed;
+
+        // Projectile art is drawn facing local +y (NoseSword/LightningBolt
+        // are tall, narrow sprites) -- without this they'd always render
+        // pointing straight up no matter which way they were actually fired,
+        // since Tower/PlayerController spawn them with Quaternion.identity
+        // and only this method ever sets a travel direction.
+        if (initialDir.sqrMagnitude > 0.0001f)
+            transform.rotation = Quaternion.FromToRotation(Vector3.up, initialDir);
     }
 
     protected bool ShouldIgnoreCollider(Collider2D other)

@@ -1,0 +1,26 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 9721b95c021e43cab32ddc8359c7831e, type: 3}
+  m_Name: PufferHuffer
+  m_EditorClassIdentifier: Assembly-CSharp::ShopCardSO
+  label: 'Puffer Huffer '
+  rarity: 1
+  weight: 30
+  cost: 35
+  rewardType: 6
+  intValue: 0
+  floatValue: 0
+  duration: 0
+  towerReward: {fileID: 11400000, guid: 96a06bb3685f34b3a8584eaf6a88d42b, type: 2}
+  icon: {fileID: 0}
+  description: Inwardly panicking pufferfish that aggressively hurls inflated, spiky
+    clones of itself onto the path.

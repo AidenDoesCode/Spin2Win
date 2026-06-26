@@ -43,7 +43,6 @@ public class ShopUI : MonoBehaviour
     [Header("Colors")]
     public Color backdropColor     = new Color(0.078f, 0.012f, 0.012f, 0.85f); // Near-black wine red
     public Color panelColor        = new Color(0.2f, 0.031f, 0.031f, 0.97f);   // Deep Maroon (casino felt)
-    public Color cardColor         = Color.white;                             // Crisp Dice White (slot window)
     public Color cardBorderColor   = new Color(0.541f, 0.078f, 0.078f, 1f);    // Red Trim
     public Color purchasedColor    = new Color(0.4f, 0.4f, 0.4f, 1f);
     public Color affordableColor   = new Color(1f, 0.8431f, 0f, 1f);              // Jackpot Gold
@@ -51,12 +50,39 @@ public class ShopUI : MonoBehaviour
     public Color rerollButtonColor = new Color(1f, 0.8431f, 0f, 1f);              // Jackpot Gold
     public Color cardTextColor     = new Color(0.0431f, 0.0745f, 0.1686f, 1f);    // Deep Abyss (dark text on white cards)
 
+    [Header("Card Type Colors")]
+    public Color towerCardColor    = new Color32(0x0A, 0x5C, 0x36, 0xFF);         // Felt Green (matches the placement grid)
+    public Color upgradeCardColor  = new Color32(0x33, 0x08, 0x08, 0xFF);         // Velvet Crimson (instant-action event card)
+    public Color cardLabelTextColor = new Color32(0xF5, 0xF5, 0xF0, 0xFF);        // Crisp Ivory (readable on the dark card bodies above)
+
+    [Header("Card Background Art")]
+    [Tooltip("Overrides towerCardColor with real art on Tower cards once assigned. Leave empty to keep the flat color.")]
+    public Sprite towerCardBackgroundArt;
+    [Tooltip("Overrides upgradeCardColor with real art on Upgrade cards once assigned. Leave empty to keep the flat color.")]
+    public Sprite upgradeCardBackgroundArt;
+
     [Header("Rarity Colors")]
     public Color commonRarityColor    = new Color(0.6275f, 0.6275f, 0.6275f, 1f); // Simple Utility
     public Color uncommonRarityColor  = new Color(0f, 0.6588f, 0.5882f, 1f);      // Seafoam Teal
     public Color rareRarityColor      = new Color(0.6078f, 0.3647f, 0.8980f, 1f); // Coral Purple
     public Color epicRarityColor      = new Color(0.9451f, 0.3569f, 0.7098f, 1f); // Neon Jelly Pink
     public Color legendaryRarityColor = new Color(1f, 0.8431f, 0f, 1f);           // Jackpot Gold
+
+    [System.Serializable]
+    public class BorderArt
+    {
+        [Tooltip("Plays on loop on the card border if assigned. Can animate the border Image's sprite, color, scale, rotation -- anything keyed in the clip.")]
+        public AnimationClip animation;
+        [Tooltip("Shown when no animation clip is assigned (or as the very first frame before the clip kicks in). Leave empty to keep the flat rarity color border.")]
+        public Sprite fallbackSprite;
+    }
+
+    [Header("Rarity Border Art")]
+    public BorderArt commonBorderArt;
+    public BorderArt uncommonBorderArt;
+    public BorderArt rareBorderArt;
+    public BorderArt epicBorderArt;
+    public BorderArt legendaryBorderArt;
 
     [Header("Audio")]
     [Tooltip("The one sound effect played when Reroll/Spin is pressed. Should already contain the full spin -- fast ticking, slowdown, and landing ding -- as a single clip. The visual card flicker (Item Spin Reveal settings above) eases on its own timeline to match it.")]
@@ -311,7 +337,7 @@ public class ShopUI : MonoBehaviour
         return borderObj;
     }
 
-    private GameObject CreateCard(SpinFortShopManager.ShopOffer offer, int index, bool spin)
+    private GameObject CreateCard(ShopCardSO offer, int index, bool spin)
     {
         if (offer == null) return CreateEmptyCard(index);
 
@@ -332,11 +358,28 @@ public class ShopUI : MonoBehaviour
         borderRT.sizeDelta = new Vector2(cardWidth, cardHeight);
         Image borderImg = borderObj.AddComponent<Image>();
         Color rarityColor = GetRarityColor(offer.rarity);
-        borderImg.color = rarityColor;
-
         float glowIntensity = GetRarityGlowIntensity(offer.rarity);
-        if (glowIntensity > 0f)
-            rarityGlowRoutines.Add(StartCoroutine(RarityGlow(borderImg, rarityColor, glowIntensity, GetRarityGlowSpeed(offer.rarity))));
+        BorderArt borderArt = GetBorderArt(offer.rarity);
+
+        if (borderArt != null && borderArt.animation != null)
+        {
+            if (borderArt.fallbackSprite != null) borderImg.sprite = borderArt.fallbackSprite;
+            borderImg.color = Color.white;
+            PlayBorderAnimation(borderObj, borderArt.animation);
+        }
+        else if (borderArt != null && borderArt.fallbackSprite != null)
+        {
+            borderImg.sprite = borderArt.fallbackSprite;
+            borderImg.color = Color.white;
+            if (glowIntensity > 0f)
+                rarityGlowRoutines.Add(StartCoroutine(RarityGlow(borderImg, Color.white, glowIntensity, GetRarityGlowSpeed(offer.rarity))));
+        }
+        else
+        {
+            borderImg.color = rarityColor;
+            if (glowIntensity > 0f)
+                rarityGlowRoutines.Add(StartCoroutine(RarityGlow(borderImg, rarityColor, glowIntensity, GetRarityGlowSpeed(offer.rarity))));
+        }
 
         GameObject innerObj = new GameObject("Inner");
         innerObj.transform.SetParent(borderObj.transform, false);
@@ -346,7 +389,10 @@ public class ShopUI : MonoBehaviour
         innerRT.offsetMin = new Vector2(2f, 2f);
         innerRT.offsetMax = new Vector2(-2f, -2f);
         Image innerImg = innerObj.AddComponent<Image>();
-        innerImg.color = isPurchased ? purchasedColor : cardColor;
+        Color baseCardColor = offer.rewardType == SpinFortRewardType.Tower ? towerCardColor : upgradeCardColor;
+        Sprite baseCardArt = offer.rewardType == SpinFortRewardType.Tower ? towerCardBackgroundArt : upgradeCardBackgroundArt;
+        innerImg.sprite = baseCardArt;
+        innerImg.color = isPurchased ? purchasedColor : (baseCardArt != null ? Color.white : baseCardColor);
 
         GameObject iconObj = new GameObject("Icon");
         iconObj.transform.SetParent(innerObj.transform, false);
@@ -369,7 +415,7 @@ public class ShopUI : MonoBehaviour
         var label = labelObj.AddComponent<TextMeshProUGUI>();
         label.fontSize = 35;
         label.alignment = TextAlignmentOptions.TopLeft;
-        label.color = cardTextColor;
+        label.color = cardLabelTextColor;
 
         GameObject costObj = new GameObject("Cost");
         costObj.transform.SetParent(innerObj.transform, false);
@@ -406,9 +452,18 @@ public class ShopUI : MonoBehaviour
         button.onClick.AddListener(() => OnBuyClicked(capturedIndex, borderObj));
 
         // Clicking anywhere on the card besides the Buy button itself opens
-        // the stat/description popup. No-ops for non-tower offers (buffs etc).
-        TowerCardClickHandler clickHandler = borderObj.AddComponent<TowerCardClickHandler>();
-        clickHandler.tower = offer.towerReward;
+        // the stat/description popup -- TowerSO stats for Tower cards,
+        // ShopCardSO stats for everything else.
+        if (offer.rewardType == SpinFortRewardType.Tower)
+        {
+            TowerCardClickHandler clickHandler = borderObj.AddComponent<TowerCardClickHandler>();
+            clickHandler.tower = offer.towerReward;
+        }
+        else
+        {
+            ShopCardClickHandler clickHandler = borderObj.AddComponent<ShopCardClickHandler>();
+            clickHandler.card = offer;
+        }
 
         GameObject lockObj = new GameObject("LockButton");
         lockObj.transform.SetParent(innerObj.transform, false);
@@ -501,13 +556,43 @@ public class ShopUI : MonoBehaviour
         }
     }
 
-    private IEnumerator SpinThenReveal(SpinFortShopManager.ShopOffer offer, int index, bool isPurchased, bool canAfford,
+    // Public so other card-rendering UIs (e.g. the upgrade inventory) can
+    // reuse the exact same border art/animation instead of duplicating it.
+    public BorderArt GetBorderArt(CardRarity rarity)
+    {
+        switch (rarity)
+        {
+            case CardRarity.Uncommon:  return uncommonBorderArt;
+            case CardRarity.Rare:      return rareBorderArt;
+            case CardRarity.Epic:      return epicBorderArt;
+            case CardRarity.Legendary: return legendaryBorderArt;
+            default:                   return commonBorderArt;
+        }
+    }
+
+    // Uses the legacy Animation component (not Animator) so any AnimationClip
+    // can just be dropped in and looped at runtime with zero extra setup --
+    // no AnimatorController asset to author. Works for sprite-swap, color,
+    // scale, rotation, whatever the clip keys on the border Image/RectTransform.
+    public static void PlayBorderAnimation(GameObject borderObj, AnimationClip clip)
+    {
+        Animation anim = borderObj.GetComponent<Animation>();
+        if (anim == null) anim = borderObj.AddComponent<Animation>();
+
+        clip.legacy = true;
+        anim.AddClip(clip, clip.name);
+        anim.clip = clip;
+        anim.wrapMode = WrapMode.Loop;
+        anim.Play(clip.name);
+    }
+
+    private IEnumerator SpinThenReveal(ShopCardSO offer, int index, bool isPurchased, bool canAfford,
         TextMeshProUGUI label, TextMeshProUGUI costLabel, Image iconImg, Button button, TextMeshProUGUI buttonLabel)
     {
         float duration = itemSpinBaseDuration + index * itemSpinStaggerPerCard;
         float elapsed = 0f;
         float tickTimer = 0f;
-        List<SpinFortShopManager.ShopOffer> pool = shop != null ? shop.possibleOffers : null;
+        List<ShopCardSO> pool = shop != null ? shop.possibleOffers : null;
 
         while (elapsed < duration)
         {
@@ -543,7 +628,7 @@ public class ShopUI : MonoBehaviour
         ApplyFinalCardContent(offer, isPurchased, canAfford, label, costLabel, iconImg, button, buttonLabel);
     }
 
-    private void ApplyFinalCardContent(SpinFortShopManager.ShopOffer offer, bool isPurchased, bool canAfford,
+    private void ApplyFinalCardContent(ShopCardSO offer, bool isPurchased, bool canAfford,
         TextMeshProUGUI label, TextMeshProUGUI costLabel, Image iconImg, Button button, TextMeshProUGUI buttonLabel)
     {
         label.text = offer.label;

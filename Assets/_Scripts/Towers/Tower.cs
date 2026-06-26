@@ -22,21 +22,21 @@ public class Tower : MonoBehaviour
     private AudioSource audioSource;
     private SpriteSquash squash;
 
-    // Flat per-instance damage bonus -- separate from TowerSO.damage (a
-    // shared asset) so a one-off effect like All-In Multiplier can buff a
-    // single placed tower without affecting every other tower of that type.
+    // Per-instance bonuses -- separate from TowerSO's shared base stats so
+    // one-off effects (All-In Multiplier, or a consumable upgrade card
+    // dragged onto this specific tower from the inventory) can buff a single
+    // placed tower without affecting every other tower of that type.
     private int instanceDamageBonus;
+    private float instanceAttackSpeedBonus; // fractional, e.g. 0.1 = +10%
+    private float instanceRangeBonus;       // fractional, e.g. 0.1 = +10%
 
-    public int EffectiveDamage => (data != null ? data.damage : 0) + instanceDamageBonus +
-        (GameModifiers.Instance != null ? GameModifiers.Instance.globalDamageBonus : 0);
-    public float EffectiveRange => data != null
-        ? data.range * (GameModifiers.Instance != null ? GameModifiers.Instance.globalRangeMultiplier : 1f)
-        : 0f;
-    public float EffectiveFireRate => data != null
-        ? data.fireRate * (GameModifiers.Instance != null ? GameModifiers.Instance.globalAttackSpeedMultiplier : 1f)
-        : 0f;
+    public int EffectiveDamage => (data != null ? data.damage : 0) + instanceDamageBonus;
+    public float EffectiveRange => data != null ? data.range * (1f + instanceRangeBonus) : 0f;
+    public float EffectiveFireRate => data != null ? data.fireRate * (1f + instanceAttackSpeedBonus) : 0f;
 
     public void AddInstanceDamageBonus(int amount) => instanceDamageBonus += amount;
+    public void AddInstanceAttackSpeedBonus(float fractionalIncrease) => instanceAttackSpeedBonus += fractionalIncrease;
+    public void AddInstanceRangeBonus(float fractionalIncrease) => instanceRangeBonus += fractionalIncrease;
 
     // Sells this placed tower for a partial refund and removes it from the
     // grid -- triggers Riptide Counter-Current's sell explosion if bought.
