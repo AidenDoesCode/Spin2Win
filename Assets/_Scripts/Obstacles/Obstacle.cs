@@ -15,6 +15,11 @@ public class Obstacle : MonoBehaviour
     [Min(0)] public int damagePerTick = 1;
     [Min(0.05f)] public float damageTickInterval = 1f;
 
+    [Header("Audio")]
+    [Tooltip("Chest-crack / glass-shatter sound played whenever this obstacle clears (lifetime expiry or round-end cleanup).")]
+    public AudioClip destroyedSound;
+    [Range(0f, 3f)] public float destroyedVolume = 1f;
+
     private readonly HashSet<Enemy> affectedEnemies = new HashSet<Enemy>();
     private readonly Dictionary<Enemy, float> nextDamageTime = new Dictionary<Enemy, float>();
 
@@ -34,6 +39,9 @@ public class Obstacle : MonoBehaviour
     {
         foreach (Enemy enemy in affectedEnemies)
             if (enemy != null) enemy.ClearObstacleSlow();
+
+        if (destroyedSound != null)
+            AudioSource.PlayClipAtPoint(destroyedSound, transform.position, destroyedVolume * SfxSettings.Volume);
     }
 
     private void OnTriggerEnter2D(Collider2D other)

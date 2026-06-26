@@ -21,13 +21,13 @@ public class GateRouletteUI : MonoBehaviour
     [Header("Colors")]
     public Color[] wedgeColors = new Color[]
     {
-        new Color(0.878f, 0.302f, 0.302f, 1f),
-        new Color(0.302f, 0.6f, 0.878f, 1f),
-        new Color(0.4f, 0.8f, 0.4f, 1f),
-        new Color(0.878f, 0.753f, 0.376f, 1f),
+        new Color(0.8157f, 0f, 0f, 1f),         // Card Suit Red
+        new Color(0.0078f, 0.5020f, 0.5647f, 1f), // Deep Ocean Teal
+        new Color(0.6078f, 0.3647f, 0.8980f, 1f), // Coral Purple
+        new Color(1f, 0.8431f, 0f, 1f),         // Jackpot Gold
     };
-    public Color pointerColor = Color.white;
-    public Color panelColor = new Color(0.102f, 0.102f, 0.180f, 0.92f);
+    public Color pointerColor = Color.white; // Crisp Dice White
+    public Color panelColor = new Color(0.2f, 0.031f, 0.031f, 0.92f); // Deep Maroon (casino felt)
 
     public event Action SpinCompleted;
 

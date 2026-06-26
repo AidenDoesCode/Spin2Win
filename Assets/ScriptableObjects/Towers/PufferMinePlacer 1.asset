@@ -13,10 +13,12 @@ MonoBehaviour:
   m_Name: PufferMinePlacer 1
   m_EditorClassIdentifier: Assembly-CSharp::TowerSO
   towerName: Puffer Hurler
-  cost: 40
+  rarity: 1
+  cost: 35
   range: 5
-  icon: {fileID: 7943707647013513025, guid: 9bd0d901e76acd444839042539b358b5, type: 3}
-  description: Inwardly panicking pufferfish that aggressively hurls inflated, spiky clones of itself onto the path.
+  icon: {fileID: 7510229436396301706, guid: 2225285ed2287449882eb8f60d78a462, type: 3}
+  description: Inwardly panicking pufferfish that aggressively hurls inflated, spiky
+    clones of itself onto the path.
   rotationSpeed: 120
   fireRate: 0.8
   projectileSpeed: 5
@@ -24,6 +26,12 @@ MonoBehaviour:
   isMelee: 0
   projectilePrefab: {fileID: 299504703514488645, guid: bfc5bbc2833c41499972d2c7471d5f69, type: 3}
   towerPrefab: {fileID: 3874816204346800925, guid: 681100dc363bc411b855364da738b3a2, type: 3}
+  visualScaleMultiplier: 1.5
+  projectileScaleRatio: 5
+  fireSound: {fileID: 8300000, guid: 2b772a4fd6ed04ec88bd66d2dc89f769, type: 3}
+  fireVolume: 1
+  impactSound: {fileID: 0}
+  impactVolume: 1
   idleAnimation: {fileID: 7400000, guid: 83f89bc3578be4a26adef037e84510f8, type: 2}
   fireAnimation: {fileID: 7400000, guid: caeb2487ed7824a56bce5fd0072314f6, type: 2}
   meleeImpactAnimation: {fileID: 0}

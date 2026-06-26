@@ -111,6 +111,7 @@ MonoBehaviour:
   speedMultiplier: 1
   damageMultiplier: 1
   waypointReachedDistance: 0.15
+  deathSound: {fileID: 8300000, guid: d05b48aae6e3b46dcbabb919ff9e1904, type: 3}
 --- !u!50 &7147339839466860684
 Rigidbody2D:
   serializedVersion: 5

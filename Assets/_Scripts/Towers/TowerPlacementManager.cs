@@ -36,13 +36,19 @@ public static TowerPlacementManager Instance { get; private set; }
     [Header("Placement Preview")]
     [Tooltip("Alpha of the ghost sprite shown under the cursor while placing.")]
     [Range(0f, 1f)] public float ghostAlpha = 0.5f;
-    public Color highlightValidColor = new Color(0.3f, 1f, 0.3f, 0.5f);
-    public Color highlightInvalidColor = new Color(1f, 0.3f, 0.3f, 0.5f);
+    public Color highlightValidColor = new Color(0f, 0.6588f, 0.5882f, 0.5f);  // Seafoam Teal
+    public Color highlightInvalidColor = new Color(0.8157f, 0f, 0f, 0.5f);    // Card Suit Red
     public int previewSortingOrder = 50;
 
     [Header("Loadout Slots (1-5)")]
     public TowerSO[] loadout = new TowerSO[5];
     public int selectedSlot = 0;
+
+    [Header("Audio")]
+    [Tooltip("Soft plop/thud played when a tower is successfully dropped onto a grid tile.")]
+    public AudioClip placeSound;
+    [Range(0f, 3f)] public float placeVolume = 1f;
+    private AudioSource audioSource;
 
     [Tooltip("-1 = no slot locked. Set by the 'Locked Slot' shop modifier; that slot can't be selected, assigned, or placed from.")]
     public int lockedSlotIndex = -1;
@@ -59,6 +65,9 @@ public static TowerPlacementManager Instance { get; private set; }
     {
         if (Instance == null) Instance = this;
         else Destroy(gameObject);
+
+        audioSource = gameObject.AddComponent<AudioSource>();
+        audioSource.playOnAwake = false;
 
         BuildPreviewObjects();
     }
@@ -198,6 +207,8 @@ public static TowerPlacementManager Instance { get; private set; }
             SlotChanged?.Invoke(selectedSlot);
         }
 
+        if (placeSound != null) audioSource.PlayOneShot(placeSound, placeVolume * SfxSettings.Volume);
+
         return true;
     }
 
@@ -309,10 +320,12 @@ public static TowerPlacementManager Instance { get; private set; }
 
         ghostTransform.gameObject.SetActive(true);
         ghostTransform.position = point;
-        ghostTransform.rotation = Quaternion.Euler(0f, 0f, pendingRotation);
+
+        float displayAngle = TopDownAim.Fold(pendingRotation, 0f, out bool flipped);
+        ghostTransform.rotation = Quaternion.Euler(0f, 0f, displayAngle);
         ghostRenderer.sprite = selected.icon;
         ghostRenderer.color = new Color(1f, 1f, 1f, ghostAlpha);
-        FitGhostToGrid(selected.icon);
+        FitGhostToGrid(selected.icon, flipped, selected.visualScaleMultiplier);
 
         highlightRenderer.gameObject.SetActive(true);
         highlightRenderer.transform.position = point;
@@ -321,20 +334,21 @@ public static TowerPlacementManager Instance { get; private set; }
     }
 
     // Icons come from shop/UI art with all sorts of native pixel sizes, so the
-    // ghost is rescaled to a consistent fraction of a grid tile instead of
-    // rendering at whatever raw size the sprite's import settings happen to give it.
-    private void FitGhostToGrid(Sprite sprite)
+    // ghost is rescaled to a consistent fraction of a grid tile, then scaled
+    // up by the same visualScaleMultiplier the real placed tower uses, so the
+    // preview actually matches the size the tower ends up at.
+    private void FitGhostToGrid(Sprite sprite, bool flipped = false, float visualScaleMultiplier = 1f)
     {
         if (sprite == null)
         {
-            ghostTransform.localScale = Vector3.one;
+            ghostTransform.localScale = new Vector3(flipped ? -visualScaleMultiplier : visualScaleMultiplier, visualScaleMultiplier, visualScaleMultiplier);
             return;
         }
 
         Vector2 size = sprite.bounds.size;
         float maxDim = Mathf.Max(size.x, size.y, 0.0001f);
-        float scale = (EffectiveCellSize() * 0.8f) / maxDim;
-        ghostTransform.localScale = Vector3.one * scale;
+        float scale = (EffectiveCellSize() * 0.8f) / maxDim * visualScaleMultiplier;
+        ghostTransform.localScale = new Vector3(flipped ? -scale : scale, scale, scale);
     }
 
     private bool CanShowPreview(out TowerSO selected)

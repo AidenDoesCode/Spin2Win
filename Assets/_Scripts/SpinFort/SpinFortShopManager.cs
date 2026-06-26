@@ -33,22 +33,39 @@ public class SpinFortShopManager : MonoBehaviour
     [Min(1)] public int numOffersPerRound = 3;
 
     [Header("Spin To Reroll")]
-    [Tooltip("Score cost to spin for a fresh set of offers before buying.")]
-    [Min(0)] public int rerollCost = 25;
+    [Tooltip("Score cost of the first reroll in a buy phase.")]
+    [Min(0)] public int baseRerollCost = 10;
+    [Tooltip("Added to the reroll cost every time the player spins during a buy phase.")]
+    [Min(0)] public int rerollCostIncrement = 10;
+
+    public int rerollCost { get; private set; }
 
     public event Action ShopOpened;
     public event Action ShopClosed;
     public event Action ShopRefreshed;
 
+    // All three lists are kept at a fixed length (numOffersPerRound) so a
+    // slot's index never shifts -- a null offer means that slot hasn't been
+    // revealed yet (player still needs to spin).
     public List<ShopOffer> CurrentOffers { get; } = new List<ShopOffer>();
     public bool IsOpen { get; private set; }
 
     private readonly List<bool> purchased = new List<bool>();
+    private readonly List<bool> locked = new List<bool>();
 
     private void Awake()
     {
         if (Instance == null) Instance = this;
         else Destroy(gameObject);
+
+        rerollCost = baseRerollCost;
+
+        for (int i = 0; i < numOffersPerRound; i++)
+        {
+            CurrentOffers.Add(null);
+            purchased.Add(false);
+            locked.Add(false);
+        }
     }
 
     private void Start()
@@ -75,7 +92,11 @@ public class SpinFortShopManager : MonoBehaviour
         }
     }
 
-    private void HandleRoundStarted(int round) => CloseShop();
+    private void HandleRoundStarted(int round)
+    {
+        rerollCost = baseRerollCost;
+        CloseShop();
+    }
 
     private void HandleRoundFinished(int round)
     {
@@ -83,12 +104,21 @@ public class SpinFortShopManager : MonoBehaviour
         OpenShop();
     }
 
-    // Opens empty -- the player has to spend gold via TryReroll (the "SPIN FOR
-    // TOWERS!" prompt) to actually reveal offers, even the first time.
+    // Opens with locked slots preserved from the previous buy phase --
+    // everything else (and the first-ever open) starts empty, requiring the
+    // player to spend gold via TryReroll (the "SPIN FOR TOWERS!" prompt) to
+    // reveal offers in those slots.
     public void OpenShop()
     {
-        CurrentOffers.Clear();
-        purchased.Clear();
+        for (int i = 0; i < CurrentOffers.Count; i++)
+        {
+            if (!locked[i])
+            {
+                CurrentOffers[i] = null;
+                purchased[i] = false;
+            }
+        }
+
         IsOpen = true;
         ShopOpened?.Invoke();
     }
@@ -106,6 +136,7 @@ public class SpinFortShopManager : MonoBehaviour
         if (!ScoreManager.Instance.TrySpendScore(rerollCost)) return false;
 
         RerollOffers();
+        rerollCost += rerollCostIncrement;
         return true;
     }
 
@@ -113,6 +144,24 @@ public class SpinFortShopManager : MonoBehaviour
     {
         if (index < 0 || index >= purchased.Count) return true;
         return purchased[index];
+    }
+
+    public bool IsOfferLocked(int index)
+    {
+        if (index < 0 || index >= locked.Count) return false;
+        return locked[index];
+    }
+
+    // Toggling a lock only makes sense on a revealed, unpurchased offer --
+    // locking saves it (skipped on reroll) into the next round's buy phase.
+    public bool ToggleOfferLock(int index)
+    {
+        if (index < 0 || index >= locked.Count) return false;
+        if (CurrentOffers[index] == null || purchased[index]) return false;
+
+        locked[index] = !locked[index];
+        ShopRefreshed?.Invoke();
+        return true;
     }
 
     public bool TryBuyOffer(int index)
@@ -123,6 +172,13 @@ public class SpinFortShopManager : MonoBehaviour
         if (ScoreManager.Instance == null) return false;
 
         var offer = CurrentOffers[index];
+        if (offer == null) return false;
+
+        if (offer.rewardType == SpinFortRewardType.Tower
+            && PlayerTowerInventory.Instance != null
+            && PlayerTowerInventory.Instance.IsFull)
+            return false;
+
         if (!ScoreManager.Instance.TrySpendScore(offer.cost)) return false;
 
         ApplyOffer(offer);
@@ -131,13 +187,22 @@ public class SpinFortShopManager : MonoBehaviour
         return true;
     }
 
+    // Only rerolls slots that aren't locked; locked slots keep their current
+    // offer (and purchased state) untouched.
     private void RerollOffers()
     {
-        CurrentOffers.Clear();
-        CurrentOffers.AddRange(RollRandomOffers(numOffersPerRound));
+        int rerollCount = 0;
+        for (int i = 0; i < CurrentOffers.Count; i++)
+            if (!locked[i]) rerollCount++;
 
-        purchased.Clear();
-        for (int i = 0; i < CurrentOffers.Count; i++) purchased.Add(false);
+        List<ShopOffer> fresh = RollRandomOffers(rerollCount);
+        int freshCursor = 0;
+        for (int i = 0; i < CurrentOffers.Count; i++)
+        {
+            if (locked[i]) continue;
+            CurrentOffers[i] = freshCursor < fresh.Count ? fresh[freshCursor++] : null;
+            purchased[i] = false;
+        }
     }
 
     private List<ShopOffer> RollRandomOffers(int count)

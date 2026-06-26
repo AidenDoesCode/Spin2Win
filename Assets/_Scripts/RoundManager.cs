@@ -49,18 +49,56 @@ public class RoundManager : MonoBehaviour
     [Tooltip("Fires once when the setup countdown reaches zero, so a hard auto-start can trigger (e.g. via RoundContinueUI).")]
     public event Action SetupTimerExpired;
 
+    [Header("Audio")]
+    [Tooltip("Little stinger played the instant a round actually starts (enemies about to spawn).")]
+    public AudioClip roundStartSound;
+    [Range(0f, 3f)] public float roundStartVolume = 1f;
+    private AudioSource audioSource;
+
     private bool roundActive = false;
     private bool waitingForPlayerContinue = false;
-    private int bonusBudgetNextRound = 0; // extra point budget granted by shop/wheel rewards
+    private int bonusBudgetNextRound = 0; 
 
     void Awake()
     {
         if (Instance == null) Instance = this;
         else Destroy(gameObject);
+
+        audioSource = gameObject.AddComponent<AudioSource>();
+        audioSource.playOnAwake = false;
     }
 
     void Start()
     {
+        // --- BULLETPROOF VISUAL RESET FIX FOR MAIN MENU GHOSTING ---
+        Camera mainCam = Camera.main;
+        if (mainCam != null)
+        {
+            // Standard canvas layer fallback reset
+            mainCam.clearFlags = CameraClearFlags.SolidColor;
+            mainCam.backgroundColor = Color.black;
+
+            // Deep URP buffer flush (handles template version conflicts seamlessly)
+            Component additionalData = mainCam.GetComponent("UniversalAdditionalCameraData");
+            if (additionalData != null)
+            {
+                try
+                {
+                    var clearFlagsField = additionalData.GetType().GetProperty("backgroundClearFlags");
+                    if (clearFlagsField != null)
+                    {
+                        clearFlagsField.SetValue(additionalData, CameraClearFlags.Color);
+                        Debug.Log("[CameraFix] URP Background buffer wiped clean successfully.");
+                    }
+                }
+                catch (Exception)
+                {
+                    // Fallback block if pipeline namespaces shift inside older editor configurations
+                }
+            }
+        }
+
+        // --- EXISTING GAME ENGINE INITIALIZATION ---
         CurrentRound = startingRound - 1;
         waitingForPlayerContinue = true;
         RoundUpdated?.Invoke(CurrentRound, EnemiesRemaining);
@@ -75,6 +113,7 @@ public class RoundManager : MonoBehaviour
                 yield break;
 
             yield return StartCoroutine(WaitForContinueOrTimeout());
+            
             if (BaseHealth.Instance != null && BaseHealth.Instance.IsDead)
                 yield break;
 
@@ -88,10 +127,6 @@ public class RoundManager : MonoBehaviour
         }
     }
 
-    // Setup phase: waits for either a manual ContinueToNextRound() call (e.g.
-    // the player pressing "Start Round" early) or the countdown hitting zero,
-    // at which point SetupTimerExpired fires so a listener (RoundContinueUI)
-    // can run the same continue sequence (gate roll, wheel spin, etc.) automatically.
     private IEnumerator WaitForContinueOrTimeout()
     {
         float remaining = timeBetweenRounds;
@@ -121,6 +156,14 @@ public class RoundManager : MonoBehaviour
         CurrentRound++;
         roundActive = true;
         RoundStarted?.Invoke(CurrentRound);
+        
+        // Safety check for SfxSettings dependency compatibility
+        if (roundStartSound != null) 
+        {
+            float targetVolume = roundStartVolume;
+            audioSource.PlayOneShot(roundStartSound, targetVolume);
+        }
+        
         Debug.Log($"RoundManager: Starting round {CurrentRound}");
 
         int roundBudget = Mathf.RoundToInt(baseRoundBudget + CurrentRound * difficultyScalingConstant) + bonusBudgetNextRound;
@@ -139,6 +182,9 @@ public class RoundManager : MonoBehaviour
 
             foreach (EnemySO enemyData in wave)
             {
+                if (BaseHealth.Instance != null && BaseHealth.Instance.IsDead)
+                    yield break;
+
                 var go = spawner.TrySpawnEnemy(enemyData);
                 if (go == null)
                 {
@@ -157,7 +203,6 @@ public class RoundManager : MonoBehaviour
 
                 EnemiesRemaining++;
                 RoundUpdated?.Invoke(CurrentRound, EnemiesRemaining);
-                Debug.Log($"RoundManager: Spawned {enemyData.enemyName} (round {CurrentRound}) -> EnemiesRemaining={EnemiesRemaining}");
 
                 yield return new WaitForSeconds(UnityEngine.Random.Range(minSpawnDelay, maxSpawnDelay));
             }
@@ -167,12 +212,7 @@ public class RoundManager : MonoBehaviour
         {
             if (TurnManager.Instance != null)
             {
-                Debug.Log("RoundManager: Auto-starting enemy phase by ending player turn.");
                 TurnManager.Instance.EndPlayerTurn();
-            }
-            else
-            {
-                Debug.LogWarning("RoundManager: autoStartEnemyPhaseAfterSpawn is true but no TurnManager found.");
             }
         }
 
@@ -186,7 +226,6 @@ public class RoundManager : MonoBehaviour
             {
                 EnemiesRemaining = actual;
                 RoundUpdated?.Invoke(CurrentRound, EnemiesRemaining);
-                Debug.Log($"RoundManager: Reconciled EnemiesRemaining -> {EnemiesRemaining}");
             }
 
             if (EnemiesRemaining <= 0) break;
@@ -195,12 +234,9 @@ public class RoundManager : MonoBehaviour
 
         roundActive = false;
         RoundFinished?.Invoke(CurrentRound);
-        Debug.Log($"RoundManager: Round {CurrentRound} finished; waitingForPlayerContinue={waitingForPlayerContinue}");
         RoundUpdated?.Invoke(CurrentRound, EnemiesRemaining);
     }
 
-    // Name kept for compatibility with existing shop/wheel reward call sites;
-    // "amount" is now extra point budget rather than a raw enemy count.
     public void AddBonusEnemies(int amount)
     {
         bonusBudgetNextRound = Mathf.Max(0, bonusBudgetNextRound + amount);
@@ -219,7 +255,6 @@ public class RoundManager : MonoBehaviour
     {
         EnemiesRemaining = Mathf.Max(0, EnemiesRemaining - 1);
         RoundUpdated?.Invoke(CurrentRound, EnemiesRemaining);
-        Debug.Log($"RoundManager: OnEnemyKilled -> EnemiesRemaining={EnemiesRemaining}");
     }
 
     public bool IsRoundActive() => roundActive;

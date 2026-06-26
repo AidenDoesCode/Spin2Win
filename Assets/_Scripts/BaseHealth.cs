@@ -10,20 +10,30 @@ public class BaseHealth : MonoBehaviour
     public int CurrentHealth { get; private set; }
     public bool IsDead { get; private set; }
 
+    [Header("Audio")]
+    [Tooltip("Heavy alarming sound played whenever the base takes damage (an enemy breached the defense).")]
+    public AudioClip damagedSound;
+    [Range(0f, 3f)] public float damagedVolume = 1f;
+
     public event Action<int, int> HealthChanged;
     public event Action Died;
+
+    private AudioSource audioSource;
 
     private void Awake()
     {
         if (Instance == null) Instance = this;
         else Destroy(gameObject);
+
+        audioSource = gameObject.AddComponent<AudioSource>();
+        audioSource.playOnAwake = false;
     }
 
     private void Start()
     {
         CurrentHealth = maxHealth;
         IsDead = false;
-        HealthChanged?.Invoke(CurrentHealth, maxHealth);
+        NotifyHealthChanged();
     }
 
     public void TakeDamage(int amount)
@@ -32,7 +42,10 @@ public class BaseHealth : MonoBehaviour
             return;
 
         CurrentHealth = Mathf.Max(0, CurrentHealth - amount);
-        HealthChanged?.Invoke(CurrentHealth, maxHealth);
+        NotifyHealthChanged();
+
+        if (damagedSound != null)
+            audioSource.PlayOneShot(damagedSound, damagedVolume * SfxSettings.Volume);
 
         if (CurrentHealth <= 0)
         {
@@ -48,6 +61,14 @@ public class BaseHealth : MonoBehaviour
             return;
 
         CurrentHealth = Mathf.Min(maxHealth, CurrentHealth + amount);
+        NotifyHealthChanged();
+    }
+
+    // Drives both the HealthChanged UI subscribers (bar, screen tint) and
+    // MusicManager's low-health tension effect from a single source of truth.
+    private void NotifyHealthChanged()
+    {
         HealthChanged?.Invoke(CurrentHealth, maxHealth);
+        MusicManager.Instance?.SetHealthFactor(maxHealth > 0 ? (float)CurrentHealth / maxHealth : 0f);
     }
 }

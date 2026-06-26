@@ -10,10 +10,14 @@ public class TowerInventoryUI : MonoBehaviour
     public float cardGap  = 8f;
     public float padding  = 8f;
 
+    [Header("Background")]
+    [Tooltip("Casino-themed panel background. If assigned, replaces the flat panelColor fill.")]
+    public Sprite panelSprite;
+
     [Header("Colors")]
-    public Color panelColor      = new Color(0.102f, 0.102f, 0.180f, 0.95f);
-    public Color cardColor       = new Color(0.059f, 0.059f, 0.137f, 1f);
-    public Color cardBorderColor = new Color(0.353f, 0.353f, 0.604f, 1f);
+    public Color panelColor      = new Color(0.2f, 0.031f, 0.031f, 0.95f);  // Deep Maroon (casino felt)
+    public Color cardColor       = new Color(0.122f, 0.020f, 0.020f, 1f);   // Darker Wine
+    public Color cardBorderColor = new Color(0.541f, 0.078f, 0.078f, 1f);   // Red Trim
 
     private readonly List<TowerSO> displayedTowers = new List<TowerSO>();
     private readonly List<GameObject> cards        = new List<GameObject>();
@@ -23,7 +27,16 @@ public class TowerInventoryUI : MonoBehaviour
     {
         Image panel = GetComponent<Image>();
         if (panel == null) panel = gameObject.AddComponent<Image>();
-        panel.color = panelColor;
+        if (panelSprite != null)
+        {
+            panel.sprite = panelSprite;
+            panel.type = Image.Type.Simple;
+            panel.color = Color.white; // sprite already carries the casino color treatment
+        }
+        else
+        {
+            panel.color = panelColor;
+        }
     }
 
     private void Start()
@@ -136,7 +149,7 @@ public class TowerInventoryUI : MonoBehaviour
         label.text      = tower.towerName;
         label.fontSize  = 7;
         label.alignment = TextAlignmentOptions.Bottom;
-        label.color     = new Color(0.8f, 0.8f, 0.8f, 1f);
+        label.color     = Color.white;
 
         // Drag handler
         TowerDragUI drag = borderObj.AddComponent<TowerDragUI>();

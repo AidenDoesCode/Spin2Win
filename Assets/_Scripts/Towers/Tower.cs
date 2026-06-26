@@ -15,16 +15,22 @@ public class Tower : MonoBehaviour
     private Transform visualTransform;
     private float nextShotTime;
     private float currentAngle;
+    private Vector3 baseVisualScale;
 
     private AnimationClipPlayer animPlayer;
     private bool playingFireAnimation;
+    private AudioSource audioSource;
 
     private void Awake()
     {
         SpriteRenderer sr = GetComponentInChildren<SpriteRenderer>();
         visualTransform = sr != null ? sr.transform : transform;
         currentAngle = visualTransform.eulerAngles.z;
+        baseVisualScale = visualTransform.localScale;
         animPlayer = new AnimationClipPlayer(visualTransform.gameObject);
+
+        audioSource = gameObject.AddComponent<AudioSource>();
+        audioSource.playOnAwake = false;
     }
 
     private void Start()
@@ -40,6 +46,17 @@ public class Tower : MonoBehaviour
     public void Configure(TowerSO towerData)
     {
         data = towerData;
+
+        // visualScaleMultiplier lives on TowerSO (not known until now), so
+        // the scale-up and the flip-trick's baseline both happen here rather
+        // than in Awake -- re-capturing baseVisualScale after scaling keeps
+        // ApplyVisualRotation's mirror flip using the correct magnitude.
+        if (data != null)
+        {
+            transform.localScale *= data.visualScaleMultiplier;
+            baseVisualScale = visualTransform.localScale;
+        }
+
         PlayIdleAnimation();
     }
 
@@ -49,8 +66,29 @@ public class Tower : MonoBehaviour
     public void SetInitialRotation(float degrees)
     {
         currentAngle = degrees;
-        if (visualTransform != null)
-            visualTransform.rotation = Quaternion.Euler(0f, 0f, currentAngle);
+        ApplyVisualRotation(currentAngle);
+    }
+
+    // Renders currentAngle without ever rotating the sprite past vertical --
+    // folds the angle into the right-facing half and mirrors (localScale.x)
+    // for the left half instead, so the single top-down sprite never looks
+    // upside-down. Passing firePointLocalAngle in lets the fold correctly
+    // compensate for art whose neutral facing isn't exactly local +x --
+    // without it, anything that isn't due-left/due-right ends up pointing
+    // the wrong way once mirrored, which is what was sending firePoint (and
+    // therefore spawned projectiles) to the wrong position/angle.
+    private void ApplyVisualRotation(float angle)
+    {
+        if (visualTransform == null) return;
+
+        float displayAngle = TopDownAim.Fold(angle, GetFirePointLocalAngle(), out bool flipped);
+
+        visualTransform.localScale = new Vector3(
+            flipped ? -Mathf.Abs(baseVisualScale.x) : Mathf.Abs(baseVisualScale.x),
+            baseVisualScale.y,
+            baseVisualScale.z);
+
+        visualTransform.rotation = Quaternion.Euler(0f, 0f, displayAngle);
     }
 
     private void Update()
@@ -148,8 +186,11 @@ public class Tower : MonoBehaviour
         float targetRotation = desiredWorldAngle - firePointLocalAngle;
 
         currentAngle = Mathf.MoveTowardsAngle(currentAngle, targetRotation, data.rotationSpeed * Time.deltaTime);
-        visualTransform.rotation = Quaternion.Euler(0f, 0f, currentAngle);
+        ApplyVisualRotation(currentAngle);
 
+        // The aiming-accuracy check below is purely logical (based on the
+        // true continuous currentAngle), independent of how ApplyVisualRotation
+        // chooses to render it -- so it's unaffected by the fold/flip trick.
         float firePointWorldAngle = currentAngle + firePointLocalAngle;
         return Mathf.Abs(Mathf.DeltaAngle(firePointWorldAngle, desiredWorldAngle)) < 2f;
     }
@@ -157,6 +198,9 @@ public class Tower : MonoBehaviour
     private void FireAt(Enemy target)
     {
         PlayFireAnimation();
+
+        if (data.fireSound != null)
+            audioSource.PlayOneShot(data.fireSound, data.fireVolume * SfxSettings.Volume);
 
         if (data.isMelee)
         {
@@ -167,15 +211,21 @@ public class Tower : MonoBehaviour
 
         if (data.projectilePrefab == null) return;
 
+        // Transform.right only reflects rotation, not the mirror flip applied
+        // in ApplyVisualRotation, so it can't be used here once flipped --
+        // derive the world direction straight from the true currentAngle instead.
         Vector3 spawnPos = firePoint != null
             ? firePoint.position
-            : visualTransform.position + visualTransform.right * barrelLength;
+            : visualTransform.position + (Quaternion.Euler(0f, 0f, currentAngle) * Vector3.right) * barrelLength;
 
         BulletBehavior projectile = Instantiate(data.projectilePrefab, spawnPos, Quaternion.identity);
         if (projectile == null) return;
 
+        projectile.transform.localScale *= data.visualScaleMultiplier * data.projectileScaleRatio;
         projectile.Speed = data.projectileSpeed;
         projectile.Damage = data.damage;
+        projectile.impactSound = data.impactSound;
+        projectile.impactVolume = data.impactVolume;
         projectile.SetDirection((target.transform.position - spawnPos).normalized);
 
         if (data.projectileFlightAnimation != null)

@@ -44,6 +44,7 @@ public class RoundContinueUI : MonoBehaviour
         {
             subscribedRoundManager.RoundUpdated += OnRoundUpdated;
             subscribedRoundManager.SetupTimerExpired += HandleSetupTimerExpired;
+            subscribedRoundManager.RoundStarted += HandleRoundStarted;
             OnRoundUpdated(subscribedRoundManager.CurrentRound, subscribedRoundManager.EnemiesRemaining);
         }
         else
@@ -61,6 +62,7 @@ public class RoundContinueUI : MonoBehaviour
         {
             subscribedRoundManager.RoundUpdated -= OnRoundUpdated;
             subscribedRoundManager.SetupTimerExpired -= HandleSetupTimerExpired;
+            subscribedRoundManager.RoundStarted -= HandleRoundStarted;
         }
 
         if (continueButton != null)
@@ -79,6 +81,17 @@ public class RoundContinueUI : MonoBehaviour
             if (continueButton != null)
                 continueButton.interactable = roundFinished;
         }
+
+        if (roundFinished)
+            MusicManager.Instance?.PlayBuyPhaseMusic();
+    }
+
+    // Combat music starts exactly when the round itself begins (enemies about
+    // to spawn) -- not at the Continue click, which just kicks off the gate
+    // wheel spin beforehand.
+    private void HandleRoundStarted(int round)
+    {
+        MusicManager.Instance?.PlayCombatMusic();
     }
 
     // Hard auto-start: when the setup countdown hits zero, run the exact same

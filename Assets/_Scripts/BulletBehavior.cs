@@ -6,6 +6,10 @@ public class BulletBehavior : MonoBehaviour
     public float Speed = 5f;
     public int Damage = 1;
 
+    [Tooltip("Set by Tower from the firing TowerSO's impactSound. Plays once when this projectile hits an enemy.")]
+    public AudioClip impactSound;
+    [Range(0f, 3f)] public float impactVolume = 1f;
+
     [Header("Animation")]
     [Tooltip("Optional fallback looping animation on the prefab. TowerSO.projectileFlightAnimation overrides this when set.")]
     public AnimationClip flightAnimation;
@@ -98,6 +102,10 @@ public class BulletBehavior : MonoBehaviour
     {
         if (enemy == null) return;
         enemy.TakeDamage(Damage);
+
+        if (impactSound != null)
+            AudioSource.PlayClipAtPoint(impactSound, transform.position, impactVolume * SfxSettings.Volume);
+
         DestroyProjectile();
     }
 

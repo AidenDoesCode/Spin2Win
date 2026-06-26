@@ -4,6 +4,8 @@ using UnityEngine;
 public class TowerSO : ScriptableObject
 {
     public string towerName = "New Tower";
+    [Tooltip("Drives buy cost: Common 15, Uncommon 35, Rare 75, Epic 130, Legendary 220.")]
+    public CardRarity rarity = CardRarity.Common;
     [Min(0)] public int cost = 100;
     [Min(0f)] public float range = 4f;
     public Sprite icon;
@@ -25,6 +27,20 @@ public class TowerSO : ScriptableObject
     public BulletBehavior projectilePrefab;
     public GameObject towerPrefab;
 
+    [Header("Visual")]
+    [Tooltip("Scales up the whole tower (sprite + firePoint + collider) for visibility. The placement ghost preview reads this too, so it matches the placed tower's actual size.")]
+    public float visualScaleMultiplier = 3f;
+    [Tooltip("Projectile visual scale, relative to this tower's own visualScaleMultiplier (0.5 = half the tower's size).")]
+    public float projectileScaleRatio = 0.5f;
+
+    [Header("Audio")]
+    [Tooltip("Plays when this tower fires/attacks. For melee towers (isMelee) this doubles as the hit-impact sound since the attack lands instantly.")]
+    public AudioClip fireSound;
+    [Range(0f, 3f)] public float fireVolume = 1f;
+    [Tooltip("Ranged towers only: an extra sound when the projectile actually hits an enemy (e.g. an explosion), played on top of fireSound.")]
+    public AudioClip impactSound;
+    [Range(0f, 3f)] public float impactVolume = 1f;
+
     [Header("Animation")]
     [Tooltip("Looping animation played while this tower is idle/aiming.")]
     public AnimationClip idleAnimation;
@@ -34,4 +50,25 @@ public class TowerSO : ScriptableObject
     public AnimationClip meleeImpactAnimation;
     [Tooltip("Looping animation played on the projectile while it flies. Ignored for melee towers.")]
     public AnimationClip projectileFlightAnimation;
+
+    public static int CostForRarity(CardRarity rarity)
+    {
+        switch (rarity)
+        {
+            case CardRarity.Uncommon:  return 35;
+            case CardRarity.Rare:      return 75;
+            case CardRarity.Epic:      return 130;
+            case CardRarity.Legendary: return 220;
+            default:                   return 15;
+        }
+    }
+
+#if UNITY_EDITOR
+    // Keeps cost in lockstep with rarity in the editor so designers can't
+    // accidentally drift the two apart.
+    private void OnValidate()
+    {
+        cost = CostForRarity(rarity);
+    }
+#endif
 }

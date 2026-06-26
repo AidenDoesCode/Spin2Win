@@ -33,25 +33,40 @@ public class ShopUI : MonoBehaviour
     public float itemSpinBaseDuration = 1.2f;
     [Tooltip("Extra spin time added per card index, so they settle one by one like slot reels.")]
     public float itemSpinStaggerPerCard = 0.4f;
-    [Tooltip("How often the spinning card's displayed value flickers to a random offer.")]
-    public float itemSpinTickInterval = 0.06f;
+    [Tooltip("Flicker interval at the very start of the spin (fast). Tune this to match the start of your spin sound effect.")]
+    public float itemSpinTickIntervalStart = 0.03f;
+    [Tooltip("Flicker interval right before the card lands (slow, like a reel settling). Tune this to match the end of your spin sound effect.")]
+    public float itemSpinTickIntervalEnd = 0.35f;
+    [Tooltip("Shapes the fast-to-slow curve. Higher values stay fast longer before slowing sharply near the end; 1 = linear slowdown.")]
+    public float itemSpinEaseExponent = 2.5f;
 
     [Header("Colors")]
-    public Color backdropColor     = new Color(0f, 0f, 0f, 0.65f);
-    public Color panelColor        = new Color(0.102f, 0.102f, 0.180f, 0.97f);
-    public Color cardColor         = new Color(0.059f, 0.059f, 0.137f, 1f);
-    public Color cardBorderColor   = new Color(0.353f, 0.353f, 0.604f, 1f);
-    public Color purchasedColor    = new Color(0.15f, 0.15f, 0.15f, 1f);
-    public Color affordableColor   = new Color(0.878f, 0.753f, 0.376f, 1f);
-    public Color unaffordableColor = new Color(0.5f, 0.2f, 0.2f, 1f);
+    public Color backdropColor     = new Color(0.078f, 0.012f, 0.012f, 0.85f); // Near-black wine red
+    public Color panelColor        = new Color(0.2f, 0.031f, 0.031f, 0.97f);   // Deep Maroon (casino felt)
+    public Color cardColor         = Color.white;                             // Crisp Dice White (slot window)
+    public Color cardBorderColor   = new Color(0.541f, 0.078f, 0.078f, 1f);    // Red Trim
+    public Color purchasedColor    = new Color(0.4f, 0.4f, 0.4f, 1f);
+    public Color affordableColor   = new Color(1f, 0.8431f, 0f, 1f);              // Jackpot Gold
+    public Color unaffordableColor = new Color(0.8157f, 0f, 0f, 1f);              // Card Suit Red
+    public Color rerollButtonColor = new Color(1f, 0.8431f, 0f, 1f);              // Jackpot Gold
+    public Color cardTextColor     = new Color(0.0431f, 0.0745f, 0.1686f, 1f);    // Deep Abyss (dark text on white cards)
 
     [Header("Rarity Colors")]
-    public Color commonRarityColor    = new Color(0.65f, 0.65f, 0.65f, 1f);
-    public Color uncommonRarityColor  = new Color(0.35f, 0.85f, 0.4f, 1f);
-    public Color rareRarityColor      = new Color(0.3f, 0.55f, 0.95f, 1f);
-    public Color epicRarityColor      = new Color(0.65f, 0.3f, 0.9f, 1f);
-    public Color legendaryRarityColor = new Color(0.95f, 0.75f, 0.2f, 1f);
+    public Color commonRarityColor    = new Color(0.6275f, 0.6275f, 0.6275f, 1f); // Simple Utility
+    public Color uncommonRarityColor  = new Color(0f, 0.6588f, 0.5882f, 1f);      // Seafoam Teal
+    public Color rareRarityColor      = new Color(0.6078f, 0.3647f, 0.8980f, 1f); // Coral Purple
+    public Color epicRarityColor      = new Color(0.9451f, 0.3569f, 0.7098f, 1f); // Neon Jelly Pink
+    public Color legendaryRarityColor = new Color(1f, 0.8431f, 0f, 1f);           // Jackpot Gold
 
+    [Header("Audio")]
+    [Tooltip("The one sound effect played when Reroll/Spin is pressed. Should already contain the full spin -- fast ticking, slowdown, and landing ding -- as a single clip. The visual card flicker (Item Spin Reveal settings above) eases on its own timeline to match it.")]
+    public AudioClip spinSound;
+    [Range(0f, 3f)] public float spinVolume = 1f;
+    [Tooltip("Cash register / card-flick sound played when a card is successfully bought.")]
+    public AudioClip purchaseSound;
+    [Range(0f, 3f)] public float purchaseVolume = 1f;
+
+    private AudioSource audioSource;
     private RectTransform innerPanel;
     private readonly List<GameObject> cards = new List<GameObject>();
     private readonly List<Coroutine> itemSpinRoutines = new List<Coroutine>();
@@ -66,6 +81,9 @@ public class ShopUI : MonoBehaviour
 
     private void Awake()
     {
+        audioSource = gameObject.AddComponent<AudioSource>();
+        audioSource.playOnAwake = false;
+
         BuildBackdrop();
         BuildInnerPanel();
         BuildTitle();
@@ -108,7 +126,16 @@ public class ShopUI : MonoBehaviour
             ScoreManager.Instance.ScoreChanged -= OnScoreChanged;
     }
 
-    private void OnShopOpened() => Show();
+    // The shop theme is driven directly off these events (rather than
+    // indirectly through RoundManager) so it's tied precisely to whether the
+    // shop itself is open, and reliably keeps looping in the background --
+    // SFX all play on a separate AudioSource so they never interrupt it.
+    private void OnShopOpened()
+    {
+        Show();
+        MusicManager.Instance?.PlayBuyPhaseMusic();
+    }
+
     private void OnShopClosed() => Hide();
     private void OnScoreChanged(int score)
     {
@@ -172,6 +199,8 @@ public class ShopUI : MonoBehaviour
 
     private void OnRerollClicked()
     {
+        if (spinSound != null) audioSource.PlayOneShot(spinSound, spinVolume * SfxSettings.Volume);
+
         if (shop == null) return;
         if (shop.TryReroll())
             BuildCardsWithSpinReveal();
@@ -196,46 +225,33 @@ public class ShopUI : MonoBehaviour
 
         if (shop == null) return;
 
-        bool revealed = shop.CurrentOffers.Count > 0;
+        bool revealed = shop.CurrentOffers.Exists(o => o != null);
         ApplyRerollButtonMode(revealed);
 
-        if (revealed)
-        {
-            for (int i = 0; i < shop.CurrentOffers.Count; i++)
-                cards.Add(CreateCard(shop.CurrentOffers[i], i, spin));
-        }
+        for (int i = 0; i < shop.CurrentOffers.Count; i++)
+            cards.Add(CreateCard(shop.CurrentOffers[i], i, spin && shop.CurrentOffers[i] != null));
 
         ResizePanel();
     }
 
-    // Before the player has spent gold to reveal offers, the reroll button
-    // takes over as a big flashing "SPIN FOR TOWERS!" prompt front-and-center.
+    // Locking can leave some slots filled and others empty at the same time,
+    // so the reroll button always sits in its small top-left spot -- it can
+    // no longer take over the whole panel as a single all-or-nothing prompt.
     private void ApplyRerollButtonMode(bool revealed)
     {
         if (rerollFlashRoutine != null) StopCoroutine(rerollFlashRoutine);
 
-        if (revealed)
-        {
-            rerollRT.anchorMin = new Vector2(0f, 1f);
-            rerollRT.anchorMax = new Vector2(0f, 1f);
-            rerollRT.pivot = new Vector2(0f, 1f);
-            rerollRT.anchoredPosition = new Vector2(padding, -(titleRowHeight + rerollRowGap));
-            rerollRT.sizeDelta = new Vector2(rerollButtonWidth, rerollButtonHeight);
-            rerollLabel.fontSize = 26;
-            rerollLabel.text = $"Reroll ({shop.rerollCost})";
-            rerollImg.color = cardBorderColor;
-        }
-        else
-        {
-            rerollRT.anchorMin = new Vector2(0.5f, 0.5f);
-            rerollRT.anchorMax = new Vector2(0.5f, 0.5f);
-            rerollRT.pivot = new Vector2(0.5f, 0.5f);
-            rerollRT.anchoredPosition = Vector2.zero;
-            rerollRT.sizeDelta = new Vector2(rerollButtonWidth * 1.8f, rerollButtonHeight * 1.6f);
-            rerollLabel.fontSize = 34;
-            rerollLabel.text = "SPIN FOR TOWERS!";
+        rerollRT.anchorMin = new Vector2(0f, 1f);
+        rerollRT.anchorMax = new Vector2(0f, 1f);
+        rerollRT.pivot = new Vector2(0f, 1f);
+        rerollRT.anchoredPosition = new Vector2(padding, -(titleRowHeight + rerollRowGap));
+        rerollRT.sizeDelta = new Vector2(rerollButtonWidth, rerollButtonHeight);
+        rerollLabel.fontSize = 26;
+        rerollLabel.text = revealed ? $"Reroll ({shop.rerollCost})" : "SPIN FOR TOWERS!";
+        rerollImg.color = rerollButtonColor;
+
+        if (!revealed)
             rerollFlashRoutine = StartCoroutine(FlashRerollButton());
-        }
 
         int score = ScoreManager.Instance != null ? ScoreManager.Instance.Score : 0;
         rerollButton.interactable = shop.IsOpen && score >= shop.rerollCost;
@@ -253,9 +269,54 @@ public class ShopUI : MonoBehaviour
         }
     }
 
+    // An empty (not-yet-rerolled) slot just shows a placeholder -- the player
+    // has to spend a reroll to fill it in.
+    private GameObject CreateEmptyCard(int index)
+    {
+        float xPos = padding + index * (cardWidth + cardGap);
+
+        GameObject borderObj = new GameObject($"ShopCard_{index}_Empty");
+        borderObj.transform.SetParent(innerPanel, false);
+        RectTransform borderRT = borderObj.AddComponent<RectTransform>();
+        borderRT.anchorMin = new Vector2(0f, 0f);
+        borderRT.anchorMax = new Vector2(0f, 0f);
+        borderRT.pivot = new Vector2(0f, 0f);
+        borderRT.anchoredPosition = new Vector2(xPos, padding);
+        borderRT.sizeDelta = new Vector2(cardWidth, cardHeight);
+        Image borderImg = borderObj.AddComponent<Image>();
+        borderImg.color = commonRarityColor;
+
+        GameObject innerObj = new GameObject("Inner");
+        innerObj.transform.SetParent(borderObj.transform, false);
+        RectTransform innerRT = innerObj.AddComponent<RectTransform>();
+        innerRT.anchorMin = Vector2.zero;
+        innerRT.anchorMax = Vector2.one;
+        innerRT.offsetMin = new Vector2(2f, 2f);
+        innerRT.offsetMax = new Vector2(-2f, -2f);
+        Image innerImg = innerObj.AddComponent<Image>();
+        innerImg.color = purchasedColor;
+
+        GameObject labelObj = new GameObject("Label");
+        labelObj.transform.SetParent(innerObj.transform, false);
+        RectTransform labelRT = labelObj.AddComponent<RectTransform>();
+        labelRT.anchorMin = Vector2.zero;
+        labelRT.anchorMax = Vector2.one;
+        labelRT.offsetMin = labelRT.offsetMax = Vector2.zero;
+        var label = labelObj.AddComponent<TextMeshProUGUI>();
+        label.text = "?";
+        label.fontSize = 60;
+        label.alignment = TextAlignmentOptions.Center;
+        label.color = cardTextColor;
+
+        return borderObj;
+    }
+
     private GameObject CreateCard(SpinFortShopManager.ShopOffer offer, int index, bool spin)
     {
+        if (offer == null) return CreateEmptyCard(index);
+
         bool isPurchased = shop.IsOfferPurchased(index);
+        bool isLocked = shop.IsOfferLocked(index);
         int score = ScoreManager.Instance != null ? ScoreManager.Instance.Score : 0;
         bool canAfford = score >= offer.cost;
 
@@ -306,7 +367,7 @@ public class ShopUI : MonoBehaviour
         var label = labelObj.AddComponent<TextMeshProUGUI>();
         label.fontSize = 35;
         label.alignment = TextAlignmentOptions.Top;
-        label.color = Color.white;
+        label.color = cardTextColor;
 
         GameObject costObj = new GameObject("Cost");
         costObj.transform.SetParent(innerObj.transform, false);
@@ -346,6 +407,31 @@ public class ShopUI : MonoBehaviour
         // the stat/description popup. No-ops for non-tower offers (buffs etc).
         TowerCardClickHandler clickHandler = borderObj.AddComponent<TowerCardClickHandler>();
         clickHandler.tower = offer.towerReward;
+
+        GameObject lockObj = new GameObject("LockButton");
+        lockObj.transform.SetParent(innerObj.transform, false);
+        RectTransform lockRT = lockObj.AddComponent<RectTransform>();
+        lockRT.anchorMin = new Vector2(0.72f, 0.93f);
+        lockRT.anchorMax = new Vector2(0.96f, 1f);
+        lockRT.offsetMin = lockRT.offsetMax = Vector2.zero;
+        Image lockImg = lockObj.AddComponent<Image>();
+        lockImg.color = isLocked ? rerollButtonColor : purchasedColor;
+        Button lockButton = lockObj.AddComponent<Button>();
+        lockButton.interactable = !isPurchased;
+
+        GameObject lockLabelObj = new GameObject("Label");
+        lockLabelObj.transform.SetParent(lockObj.transform, false);
+        RectTransform lockLabelRT = lockLabelObj.AddComponent<RectTransform>();
+        lockLabelRT.anchorMin = Vector2.zero;
+        lockLabelRT.anchorMax = Vector2.one;
+        lockLabelRT.offsetMin = lockLabelRT.offsetMax = Vector2.zero;
+        var lockLabel = lockLabelObj.AddComponent<TextMeshProUGUI>();
+        lockLabel.text = isLocked ? "LOCKED" : "LOCK";
+        lockLabel.fontSize = 14;
+        lockLabel.alignment = TextAlignmentOptions.Center;
+        lockLabel.color = cardTextColor;
+
+        lockButton.onClick.AddListener(() => OnLockClicked(capturedIndex));
 
         if (spin)
         {
@@ -424,7 +510,14 @@ public class ShopUI : MonoBehaviour
             if (label == null || costLabel == null || iconImg == null) yield break;
 
             tickTimer += Time.deltaTime;
-            if (tickTimer >= itemSpinTickInterval && pool != null && pool.Count > 0)
+
+            // Flicker rate decelerates over the course of the spin -- fast at
+            // first, slowing down right before landing, like a real reel.
+            float progress = duration > 0f ? Mathf.Clamp01(elapsed / duration) : 1f;
+            float eased = Mathf.Pow(progress, itemSpinEaseExponent);
+            float currentTickInterval = Mathf.Lerp(itemSpinTickIntervalStart, itemSpinTickIntervalEnd, eased);
+
+            if (tickTimer >= currentTickInterval && pool != null && pool.Count > 0)
             {
                 tickTimer = 0f;
                 var randomOffer = pool[Random.Range(0, pool.Count)];
@@ -461,13 +554,24 @@ public class ShopUI : MonoBehaviour
         button.interactable = !isPurchased && canAfford;
     }
 
+    private void OnLockClicked(int index)
+    {
+        shop?.ToggleOfferLock(index);
+    }
+
     private void OnBuyClicked(int index, GameObject card)
     {
         if (shop == null) return;
 
         bool success = shop.TryBuyOffer(index);
-        if (!success)
+        if (success)
+        {
+            if (purchaseSound != null) audioSource.PlayOneShot(purchaseSound, purchaseVolume * SfxSettings.Volume);
+        }
+        else
+        {
             StartCoroutine(ShakeCard(card));
+        }
     }
 
     private IEnumerator ShakeCard(GameObject card)
@@ -574,7 +678,7 @@ public class ShopUI : MonoBehaviour
         rerollRT.sizeDelta = new Vector2(rerollButtonWidth, rerollButtonHeight);
 
         rerollImg = rerollObj.AddComponent<Image>();
-        rerollImg.color = cardBorderColor;
+        rerollImg.color = rerollButtonColor;
         rerollButton = rerollObj.AddComponent<Button>();
         rerollButton.onClick.AddListener(OnRerollClicked);
 
@@ -587,7 +691,7 @@ public class ShopUI : MonoBehaviour
         rerollLabel = labelObj.AddComponent<TextMeshProUGUI>();
         rerollLabel.fontSize = 26;
         rerollLabel.alignment = TextAlignmentOptions.Center;
-        rerollLabel.color = Color.white;
+        rerollLabel.color = cardTextColor;
     }
 
     private void ResizePanel()

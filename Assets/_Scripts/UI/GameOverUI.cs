@@ -3,56 +3,103 @@ using UnityEngine.UI;
 using UnityEngine.SceneManagement;
 using TMPro;
 
-// Self-building full-screen overlay shown when BaseHealth.Died fires.
-// Attach to an empty GameObject anywhere in the scene -- no manual UI setup needed.
 public class GameOverUI : MonoBehaviour
 {
     [Header("Colors")]
-    public Color backdropColor = new Color(0f, 0f, 0f, 0.85f);
-    public Color panelColor = new Color(0.102f, 0.102f, 0.180f, 0.97f);
-    public Color buttonColor = new Color(0.878f, 0.753f, 0.376f, 1f);
+    public Color backdropColor = new Color(0.078f, 0.012f, 0.012f, 0.9f); 
+    public Color panelColor = new Color(0.2f, 0.031f, 0.031f, 0.97f);     
+    public Color buttonColor = new Color(1f, 0.8431f, 0f, 1f);              
+    public Color titleColor = new Color(0.8157f, 0f, 0f, 1f);               
 
     [Header("Scenes")]
-    [Tooltip("Build-settings scene name to load for the Main Menu button")]
     public string mainMenuSceneName = "MainMenu";
 
     private BaseHealth baseHealth;
     private TextMeshProUGUI scoreLabel;
+    private bool uiBuilt = false;
 
     private void Awake()
     {
-        BuildUI();
-        gameObject.SetActive(false);
+        EnsureCanvasExists();
+        if (!uiBuilt) BuildUI();
     }
 
-    private void Start()
+    private void OnEnable()
     {
         baseHealth = BaseHealth.Instance != null ? BaseHealth.Instance : FindAnyObjectByType<BaseHealth>();
         if (baseHealth != null)
         {
             baseHealth.Died += ShowGameOver;
-            if (baseHealth.IsDead) ShowGameOver(); // base was already dead when this loaded
+            Debug.Log($"[GameOverUI] Successfully subscribed to {baseHealth.gameObject.name}'s Died event.");
+            
+            if (baseHealth.IsDead) 
+            {
+                Debug.Log("[GameOverUI] Base was already dead on enable. Triggering immediately.");
+                ShowGameOver();
+                return;
+            }
         }
         else
         {
-            Debug.LogWarning("GameOverUI: No BaseHealth found to listen for.");
+            Debug.LogError("[GameOverUI] CRITICAL: Could not find any BaseHealth script in the scene! UI will never pop up.");
+        }
+
+        SetVisualsActive(false);
+    }
+
+    private void Start()
+    {
+        if (FindAnyObjectByType<UnityEngine.EventSystems.EventSystem>() == null)
+        {
+            var eventSystem = new GameObject("EventSystem");
+            eventSystem.AddComponent<UnityEngine.EventSystems.EventSystem>();
+            eventSystem.AddComponent<UnityEngine.EventSystems.StandaloneInputModule>();
         }
     }
 
-    private void OnDestroy()
+    private void OnDisable()
     {
         if (baseHealth != null) baseHealth.Died -= ShowGameOver;
     }
 
     private void ShowGameOver()
     {
-        gameObject.SetActive(true);
+        Debug.Log("[GameOverUI] ShowGameOver() has been triggered! Popping up UI screen now.");
+        SetVisualsActive(true);
         Time.timeScale = 0f;
+        MusicManager.Instance?.PlayGameOverMusic();
 
         if (scoreLabel != null)
         {
             int score = ScoreManager.Instance != null ? ScoreManager.Instance.Score : 0;
             scoreLabel.text = $"Final Gold: {score}";
+        }
+    }
+
+    private void EnsureCanvasExists()
+    {
+        // UI elements REQUIRE a Canvas component somewhere above them to render.
+        // If this object or its parents don't have one, we force-attach it.
+        Canvas canvas = GetComponentInParent<Canvas>();
+        if (canvas == null)
+        {
+            Debug.LogWarning($"[GameOverUI] '{gameObject.name}' is not inside a Canvas! Automatically converting this object into a screen-space Canvas.");
+            canvas = gameObject.AddComponent<Canvas>();
+            canvas.renderMode = RenderMode.ScreenSpaceOverlay;
+            canvas.sortingOrder = 999; // Force it to render on top of absolutely everything
+            gameObject.AddComponent<CanvasScaler>();
+            gameObject.AddComponent<GraphicRaycaster>();
+        }
+    }
+
+    private void SetVisualsActive(bool active)
+    {
+        var img = GetComponent<Image>();
+        if (img != null) img.enabled = active;
+
+        foreach (Transform child in transform)
+        {
+            child.gameObject.SetActive(active);
         }
     }
 
@@ -68,57 +115,63 @@ public class GameOverUI : MonoBehaviour
         SceneManager.LoadScene(mainMenuSceneName);
     }
 
-    private void BuildUI()
+private void BuildUI()
     {
         RectTransform rootRT = GetComponent<RectTransform>();
         if (rootRT == null) rootRT = gameObject.AddComponent<RectTransform>();
         rootRT.anchorMin = Vector2.zero;
         rootRT.anchorMax = Vector2.one;
-        rootRT.offsetMin = Vector2.zero;
-        rootRT.offsetMax = Vector2.zero;
+        rootRT.offsetMin = rootRT.offsetMax = Vector2.zero;
 
         Image backdrop = GetComponent<Image>();
         if (backdrop == null) backdrop = gameObject.AddComponent<Image>();
         backdrop.color = backdropColor;
 
+        // --- THE MAIN PANEL CONTAINER ---
         GameObject panelObj = new GameObject("Panel");
         panelObj.transform.SetParent(transform, false);
         RectTransform panelRT = panelObj.AddComponent<RectTransform>();
-        panelRT.anchorMin = new Vector2(0.5f, 0.5f);
-        panelRT.anchorMax = new Vector2(0.5f, 0.5f);
-        panelRT.pivot = new Vector2(0.5f, 0.5f);
-        panelRT.sizeDelta = new Vector2(520f, 360f);
+        panelRT.anchorMin = panelRT.anchorMax = panelRT.pivot = new Vector2(0.5f, 0.5f);
+        panelRT.sizeDelta = new Vector2(540f, 380f); // Slightly larger to give elements breathing room
         Image panelImg = panelObj.AddComponent<Image>();
         panelImg.color = panelColor;
 
+        // --- THE GAME OVER TITLE ---
         GameObject titleObj = new GameObject("Title");
         titleObj.transform.SetParent(panelObj.transform, false);
         RectTransform titleRT = titleObj.AddComponent<RectTransform>();
-        titleRT.anchorMin = new Vector2(0f, 1f);
+        titleRT.anchorMin = new Vector2(0f, 1f); // Anchor to top of panel
         titleRT.anchorMax = new Vector2(1f, 1f);
         titleRT.pivot = new Vector2(0.5f, 1f);
-        titleRT.anchoredPosition = new Vector2(0f, -50f);
-        titleRT.sizeDelta = new Vector2(0f, 80f);
+        titleRT.anchoredPosition = new Vector2(0f, -40f); // Positioned near the top edge
+        titleRT.sizeDelta = new Vector2(0f, 70f);
         var title = titleObj.AddComponent<TextMeshProUGUI>();
         title.text = "GAME OVER";
-        title.fontSize = 50;
+        title.fontSize = 52;
         title.alignment = TextAlignmentOptions.Center;
-        title.color = Color.white;
+        title.color = titleColor;
+        title.fontStyle = FontStyles.Bold;
 
+        // --- THE SCORE LABEL (FINAL GOLD) ---
         GameObject scoreObj = new GameObject("Score");
         scoreObj.transform.SetParent(panelObj.transform, false);
         RectTransform scoreRT = scoreObj.AddComponent<RectTransform>();
-        scoreRT.anchorMin = new Vector2(0f, 0.5f);
+        scoreRT.anchorMin = new Vector2(0f, 0.5f); // Anchor directly to the center
         scoreRT.anchorMax = new Vector2(1f, 0.5f);
         scoreRT.pivot = new Vector2(0.5f, 0.5f);
+        scoreRT.anchoredPosition = new Vector2(0f, 10f); // Pushed slightly up from true center
         scoreRT.sizeDelta = new Vector2(0f, 50f);
         scoreLabel = scoreObj.AddComponent<TextMeshProUGUI>();
-        scoreLabel.fontSize = 30;
+        scoreLabel.fontSize = 28;
         scoreLabel.alignment = TextAlignmentOptions.Center;
         scoreLabel.color = Color.white;
 
-        BuildButton(panelObj.transform, "RestartButton", "Restart", new Vector2(-140f, 60f), OnRestartClicked);
-        BuildButton(panelObj.transform, "MainMenuButton", "Main Menu", new Vector2(140f, 60f), OnMainMenuClicked);
+        // --- THE ACTION BUTTONS ---
+        // Placed along the bottom row with safe vertical padding (+50f offset from floor)
+        BuildButton(panelObj.transform, "RestartButton", "Restart", new Vector2(-130f, 50f), OnRestartClicked);
+        BuildButton(panelObj.transform, "MainMenuButton", "Main Menu", new Vector2(130f, 50f), OnMainMenuClicked);
+        
+        uiBuilt = true;
     }
 
     private void BuildButton(Transform parent, string name, string text, Vector2 anchoredPosition, UnityEngine.Events.UnityAction onClick)
@@ -126,9 +179,7 @@ public class GameOverUI : MonoBehaviour
         GameObject buttonObj = new GameObject(name);
         buttonObj.transform.SetParent(parent, false);
         RectTransform buttonRT = buttonObj.AddComponent<RectTransform>();
-        buttonRT.anchorMin = new Vector2(0.5f, 0f);
-        buttonRT.anchorMax = new Vector2(0.5f, 0f);
-        buttonRT.pivot = new Vector2(0.5f, 0f);
+        buttonRT.anchorMin = buttonRT.anchorMax = buttonRT.pivot = new Vector2(0.5f, 0f);
         buttonRT.anchoredPosition = anchoredPosition;
         buttonRT.sizeDelta = new Vector2(220f, 70f);
         Image buttonImg = buttonObj.AddComponent<Image>();

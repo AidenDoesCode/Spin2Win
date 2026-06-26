@@ -23,6 +23,15 @@ public class Enemy : MonoBehaviour
     [Tooltip("Distance to a waypoint before the enemy advances to the next one along the path")]
     public float waypointReachedDistance = 0.15f;
 
+    [Header("Visual")]
+    [Tooltip("Scales up the whole enemy (sprite + collider) for visibility -- gameplay values like moveSpeed/range/damage are unaffected since those are independent of transform scale.")]
+    public float visualScaleMultiplier = 3f;
+
+    [Header("Audio")]
+    [Tooltip("Coin-clink sound played when this enemy is killed (not played on a leak reaching the base).")]
+    public AudioClip deathSound;
+    [Range(0f, 3f)] public float deathVolume = 1f;
+
     public int damage => data != null ? Mathf.CeilToInt(data.damage * damageMultiplier) : 1;
     private Rigidbody2D rb;
     private Vector2 movementDirection;
@@ -32,11 +41,35 @@ public class Enemy : MonoBehaviour
 
     private void Awake()
     {
+        transform.localScale *= visualScaleMultiplier;
+
         rb = GetComponent<Rigidbody2D>();
 
         col = GetComponent<Collider2D>();
         if (col != null)
         {
+            // Collider shapes are defined in local space, so the scale-up above
+            // also inflates the collider's world-space footprint -- on a 1-unit
+            // path grid that made enemies physically too wide to round corners
+            // or squeeze past obstacles. Shrink the local size/offset by the same
+            // factor so the world-space hitbox stays exactly what it was before
+            // the visual got bigger.
+            if (col is CapsuleCollider2D capsule)
+            {
+                capsule.size /= visualScaleMultiplier;
+                capsule.offset /= visualScaleMultiplier;
+            }
+            else if (col is CircleCollider2D circle)
+            {
+                circle.radius /= visualScaleMultiplier;
+                circle.offset /= visualScaleMultiplier;
+            }
+            else if (col is BoxCollider2D box)
+            {
+                box.size /= visualScaleMultiplier;
+                box.offset /= visualScaleMultiplier;
+            }
+
             foreach (var other in activeColliders)
             {
                 if (other != null) Physics2D.IgnoreCollision(col, other);
@@ -216,6 +249,10 @@ public class Enemy : MonoBehaviour
         if (ScoreManager.Instance != null && data != null)
         {
             ScoreManager.Instance.AddScore(data.scoreValue);
+        }
+        if (deathSound != null)
+        {
+            AudioSource.PlayClipAtPoint(deathSound, transform.position, deathVolume * SfxSettings.Volume);
         }
         if (RoundManager.Instance != null)
         {

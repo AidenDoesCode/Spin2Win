@@ -10,13 +10,17 @@ public class LoadoutBarUI : MonoBehaviour
     public float slotGap = 8f;
     public float padding = 8f;
 
+    [Header("Background")]
+    [Tooltip("Casino-themed panel background. If assigned, replaces the flat panelColor fill.")]
+    public Sprite panelSprite;
+
     [Header("Colors")]
-    public Color panelColor        = new Color(0.102f, 0.102f, 0.180f, 1f);
-    public Color slotNormalColor   = new Color(0.059f, 0.059f, 0.137f, 1f);
-    public Color slotSelectedColor = new Color(0.878f, 0.753f, 0.376f, 1f);
-    public Color borderNormalColor = new Color(0.353f, 0.353f, 0.604f, 1f);
-    public Color emptyIconColor    = new Color(0.227f, 0.227f, 0.416f, 0.5f);
-    public Color lockedSlotColor   = new Color(0.18f, 0.4f, 0.25f, 1f);
+    public Color panelColor        = new Color(0.2f, 0.031f, 0.031f, 1f);    // Deep Maroon (casino felt)
+    public Color slotNormalColor   = new Color(0.122f, 0.020f, 0.020f, 1f);  // Darker Wine
+    public Color slotSelectedColor = Color.white;                           // Crisp Dice White (active selection highlight)
+    public Color borderNormalColor = new Color(0.541f, 0.078f, 0.078f, 1f);  // Red Trim
+    public Color emptyIconColor    = new Color(0.6275f, 0.6275f, 0.6275f, 0.4f); // Simple Utility
+    public Color lockedSlotColor   = new Color(0.8157f, 0f, 0f, 1f);         // Card Suit Red
 
     [Header("Trash / Recycle")]
     [Tooltip("Icon shown on the recycle slot next to the loadout bar")]
@@ -88,7 +92,16 @@ public class LoadoutBarUI : MonoBehaviour
 
         Image panel = GetComponent<Image>();
         if (panel == null) panel = gameObject.AddComponent<Image>();
-        panel.color = panelColor;
+        if (panelSprite != null)
+        {
+            panel.sprite = panelSprite;
+            panel.type = Image.Type.Simple;
+            panel.color = Color.white; // sprite already carries the casino color treatment
+        }
+        else
+        {
+            panel.color = panelColor;
+        }
 
         for (int i = 0; i < 5; i++)
         {
@@ -165,7 +178,7 @@ public class LoadoutBarUI : MonoBehaviour
             label.text      = (i + 1).ToString();
             label.fontSize  = 9;
             label.alignment = TextAlignmentOptions.Bottom;
-            label.color     = new Color(0.35f, 0.35f, 0.65f, 1f);
+            label.color     = new Color(0.6275f, 0.6275f, 0.6275f, 1f); // Simple Utility
 
             // Drop handler
             int slotIndex = i;

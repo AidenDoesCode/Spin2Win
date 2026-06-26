@@ -1,0 +1,28 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="400" height="100" viewBox="0 0 400 100" shape-rendering="crispEdges">
+
+  <!-- Red Trim outer border -->
+  <rect x="0" y="0" width="400" height="100" fill="#8a1414"/>
+
+  <!-- Deep Maroon panel fill -->
+  <rect x="6" y="6" width="388" height="88" fill="#330808"/>
+
+  <!-- Jackpot Gold inner accent line -->
+  <rect x="6" y="6" width="388" height="2" fill="#ffd700"/>
+  <rect x="6" y="92" width="388" height="2" fill="#ffd700"/>
+  <rect x="6" y="6" width="2" height="88" fill="#ffd700"/>
+  <rect x="392" y="6" width="2" height="88" fill="#ffd700"/>
+
+  <!-- Subtle felt texture flecks -->
+  <circle cx="30" cy="20" r="1" fill="#3d0a0a"/>
+  <circle cx="370" cy="80" r="1" fill="#3d0a0a"/>
+  <circle cx="200" cy="15" r="1" fill="#3d0a0a"/>
+  <circle cx="60" cy="85" r="1" fill="#3d0a0a"/>
+  <circle cx="340" cy="22" r="1" fill="#3d0a0a"/>
+
+  <!-- Corner suit accents (small diamond) -->
+  <g fill="#8a1414">
+    <rect x="14" y="44" width="6" height="6" transform="rotate(45 17 47)"/>
+    <rect x="380" y="44" width="6" height="6" transform="rotate(45 383 47)"/>
+  </g>
+
+</svg>

@@ -9,9 +9,12 @@ public class ScoreUI : MonoBehaviour
     [Tooltip("Number of digits to pad the score to (e.g. 5 -> 00010)")]
     public int paddingDigits = 5;
 
+    public Color textColor = new Color(1f, 0.8431f, 0f, 1f); // Jackpot Gold (currency text)
+
     void Awake()
     {
         scoreText = GetComponent<TMP_Text>();
+        scoreText.color = textColor;
     }
 
     void Start()

@@ -14,7 +14,7 @@ public class ShopToggleButtonUI : MonoBehaviour
     public float height = 40f;
 
     [Header("Colors")]
-    public Color buttonColor = new Color(0.878f, 0.753f, 0.376f, 1f);
+    public Color buttonColor = new Color(1f, 0.8431f, 0f, 1f); // Jackpot Gold
     public Color textColor   = Color.black;
 
     private SpinFortShopManager shop;

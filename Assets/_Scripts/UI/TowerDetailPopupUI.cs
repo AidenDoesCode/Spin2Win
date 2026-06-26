@@ -18,11 +18,11 @@ public class TowerDetailPopupUI : MonoBehaviour
     public float closeButtonSize = 56f;
 
     [Header("Colors")]
-    public Color backdropColor = new Color(0f, 0f, 0f, 0.7f);
-    public Color panelColor = new Color(0.102f, 0.102f, 0.180f, 0.97f);
-    public Color descriptionColor = new Color(0.85f, 0.85f, 0.85f, 1f);
-    public Color statColor = new Color(0.878f, 0.753f, 0.376f, 1f);
-    public Color closeColor = new Color(0.5f, 0.2f, 0.2f, 1f);
+    public Color backdropColor = new Color(0.078f, 0.012f, 0.012f, 0.8f); // Near-black wine red
+    public Color panelColor = new Color(0.2f, 0.031f, 0.031f, 0.97f);    // Deep Maroon (casino felt)
+    public Color descriptionColor = Color.white;                             // Crisp Dice White
+    public Color statColor = new Color(1f, 0.8431f, 0f, 1f);                 // Jackpot Gold
+    public Color closeColor = new Color(0.8157f, 0f, 0f, 1f);                // Card Suit Red
 
     private RectTransform innerPanel;
     private Image iconImage;
