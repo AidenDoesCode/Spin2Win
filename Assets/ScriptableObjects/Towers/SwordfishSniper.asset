@@ -19,14 +19,18 @@ MonoBehaviour:
   icon: {fileID: 8368981835052362653, guid: 47c8500916c21469cad09386b25781bf, type: 3}
   description: A swordfish wearing a tiny sniper glint scope that literally shoots
     its own high-velocity nose-swords at targets.
-  rotationSpeed: 45
+  rotationSpeed: 110
   fireRate: 0.3
   projectileSpeed: 25
   damage: 10
+  fireArcDegrees: 270
   isMelee: 0
   projectilePrefab: {fileID: 299504703514488645, guid: 9e37e281582a4751a4be72628bd6e020, type: 3}
   towerPrefab: {fileID: 3874816204346800925, guid: 681100dc363bc411b855364da738b3a2, type: 3}
-  visualScaleMultiplier: 1.5
+  screenShakeOnImpact: 0
+  shakeDuration: 0.1
+  shakeMagnitude: 0.05
+  visualScaleMultiplier: 1.2
   projectileScaleRatio: 5
   fireSound: {fileID: 8300000, guid: 18c491ac5f5174765a204d2c11123a9f, type: 3}
   fireVolume: 0.5

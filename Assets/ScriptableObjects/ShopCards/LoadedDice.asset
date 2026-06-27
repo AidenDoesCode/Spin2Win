@@ -17,10 +17,10 @@ MonoBehaviour:
   weight: 15
   cost: 55
   rewardType: 10
-  intValue: 1
+  intValue: 5
   floatValue: 0
   duration: 0
   towerReward: {fileID: 0}
   icon: {fileID: -5698558218580537692, guid: 1d45fbe36486540c182fa34396d42d4a, type: 3}
   description: Rig the machine in your favor. An investment that pays off over time
-    by permanently reducing your shop spin/reroll cost by -1 Gold.
+    by permanently reducing your shop spin/reroll cost by -5 Gold.

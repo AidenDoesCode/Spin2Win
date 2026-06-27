@@ -4,6 +4,13 @@ using UnityEngine.UI;
 
 public class RoundContinueUI : MonoBehaviour
 {
+    // True from the moment Continue is clicked until the round actually
+    // starts (gate roll, wheel spin, and the post-spin delay all happen in
+    // between) -- TowerPlacementManager checks this so a tower can't be
+    // placed while the gate wheel is still spinning.
+    public static bool IsTransitioning { get; private set; }
+
+
     [Tooltip("Panel or button GameObject to show/hide when the round has ended")]
     public GameObject panel;
 
@@ -105,6 +112,8 @@ public class RoundContinueUI : MonoBehaviour
 
     private void OnContinueClicked()
     {
+        IsTransitioning = true;
+
         if (continueButton != null)
             continueButton.interactable = false;
         if (panel != null)
@@ -113,6 +122,7 @@ public class RoundContinueUI : MonoBehaviour
         if (gateRouletteManager == null)
         {
             subscribedRoundManager?.ContinueToNextRound();
+            IsTransitioning = false;
             return;
         }
 
@@ -125,6 +135,7 @@ public class RoundContinueUI : MonoBehaviour
         {
             gateRouletteManager.RollGate();
             subscribedRoundManager?.ContinueToNextRound();
+            IsTransitioning = false;
         }
     }
 
@@ -142,5 +153,6 @@ public class RoundContinueUI : MonoBehaviour
             yield return new WaitForSeconds(minDelayAfterSpin);
 
         subscribedRoundManager?.ContinueToNextRound();
+        IsTransitioning = false;
     }
 }

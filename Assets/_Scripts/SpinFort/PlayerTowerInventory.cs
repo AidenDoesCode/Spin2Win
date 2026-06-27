@@ -21,6 +21,11 @@ public class PlayerTowerInventory : MonoBehaviour
         else Destroy(gameObject);
     }
 
+    private void OnDestroy()
+    {
+        if (Instance == this) Instance = null;
+    }
+
     public bool AddTower(TowerSO tower)
     {
         if (tower == null) return false;

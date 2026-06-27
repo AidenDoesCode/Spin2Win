@@ -211,6 +211,8 @@ public class Enemy : MonoBehaviour
         if (data == null || isDead) return;
         currentHealth -= amount;
 
+        FloatingText.Spawn(transform.position, $"-{amount}", Color.white, floatSpeed: 1.2f, duration: 0.6f);
+
         if (overlayImpact != null)
             OverlayAnimationEffect.PlayAt(transform, overlayImpact);
 

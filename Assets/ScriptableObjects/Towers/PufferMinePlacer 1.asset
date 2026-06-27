@@ -19,14 +19,18 @@ MonoBehaviour:
   icon: {fileID: 7510229436396301706, guid: 2225285ed2287449882eb8f60d78a462, type: 3}
   description: Inwardly panicking pufferfish that aggressively hurls inflated, spiky
     clones of itself onto the path.
-  rotationSpeed: 120
+  rotationSpeed: 240
   fireRate: 0.8
-  projectileSpeed: 5
+  projectileSpeed: 2
   damage: 3
+  fireArcDegrees: 360
   isMelee: 0
   projectilePrefab: {fileID: 299504703514488645, guid: bfc5bbc2833c41499972d2c7471d5f69, type: 3}
   towerPrefab: {fileID: 3874816204346800925, guid: 681100dc363bc411b855364da738b3a2, type: 3}
-  visualScaleMultiplier: 1.5
+  screenShakeOnImpact: 1
+  shakeDuration: 0.1
+  shakeMagnitude: 0.05
+  visualScaleMultiplier: 1.2
   projectileScaleRatio: 5
   fireSound: {fileID: 8300000, guid: 2b772a4fd6ed04ec88bd66d2dc89f769, type: 3}
   fireVolume: 1
@@ -36,6 +40,3 @@ MonoBehaviour:
   fireAnimation: {fileID: 7400000, guid: caeb2487ed7824a56bce5fd0072314f6, type: 2}
   meleeImpactAnimation: {fileID: 0}
   projectileFlightAnimation: {fileID: 7400000, guid: aa3cec9d61d8c4ca1a1765a0254222be, type: 2}
-  screenShakeOnImpact: 1
-  shakeDuration: 0.1
-  shakeMagnitude: 0.05

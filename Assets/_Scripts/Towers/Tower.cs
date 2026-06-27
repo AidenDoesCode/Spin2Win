@@ -1,4 +1,5 @@
 using UnityEngine;
+using UnityEngine.EventSystems;
 
 public class Tower : MonoBehaviour
 {
@@ -21,6 +22,18 @@ public class Tower : MonoBehaviour
     private bool playingFireAnimation;
     private AudioSource audioSource;
     private SpriteSquash squash;
+
+    // Windup bar -- shows charge progress toward the next shot, only while
+    // actively tracking a target, so the player can see how long until this
+    // tower can hit again. Independent GameObjects (not children of
+    // transform) so they don't inherit visualScaleMultiplier or the
+    // flip-mirror trick applied to visualTransform.
+    private static Sprite leftPivotBarSprite;
+    private GameObject windupBarObj;
+    private SpriteRenderer windupFillRenderer;
+    private const float windupBarWidth = 0.7f;
+    private const float windupBarHeight = 0.1f;
+    private const float windupBarYOffset = 0.6f;
 
     // Per-instance bonuses -- separate from TowerSO's shared base stats so
     // one-off effects (All-In Multiplier, or a consumable upgrade card
@@ -50,6 +63,7 @@ public class Tower : MonoBehaviour
         }
 
         GameModifiers.Instance?.TriggerSellExplosionIfEnabled();
+        if (windupBarObj != null) Destroy(windupBarObj);
         Destroy(gameObject);
     }
 
@@ -63,6 +77,8 @@ public class Tower : MonoBehaviour
 
         audioSource = gameObject.AddComponent<AudioSource>();
         audioSource.playOnAwake = false;
+
+        BuildWindupBar();
     }
 
     private void Start()
@@ -73,6 +89,62 @@ public class Tower : MonoBehaviour
     private void OnDestroy()
     {
         animPlayer?.Dispose();
+        if (windupBarObj != null) Destroy(windupBarObj);
+    }
+
+    private static Sprite CreateLeftPivotBarSprite()
+    {
+        var texture = new Texture2D(1, 1);
+        texture.SetPixel(0, 0, Color.white);
+        texture.Apply();
+        return Sprite.Create(texture, new Rect(0f, 0f, 1f, 1f), new Vector2(0f, 0.5f), 1f);
+    }
+
+    private void BuildWindupBar()
+    {
+        if (leftPivotBarSprite == null) leftPivotBarSprite = CreateLeftPivotBarSprite();
+
+        windupBarObj = new GameObject($"{name}_WindupBar");
+
+        GameObject bgObj = new GameObject("Background");
+        bgObj.transform.SetParent(windupBarObj.transform, false);
+        SpriteRenderer bg = bgObj.AddComponent<SpriteRenderer>();
+        bg.sprite = leftPivotBarSprite;
+        bg.color = new Color(0f, 0f, 0f, 0.6f);
+        bg.sortingOrder = 60;
+        bg.transform.localScale = new Vector3(windupBarWidth, windupBarHeight, 1f);
+
+        GameObject fillObj = new GameObject("Fill");
+        fillObj.transform.SetParent(windupBarObj.transform, false);
+        windupFillRenderer = fillObj.AddComponent<SpriteRenderer>();
+        windupFillRenderer.sprite = leftPivotBarSprite;
+        windupFillRenderer.color = new Color(1f, 0.8431f, 0f, 0.95f);
+        windupFillRenderer.sortingOrder = 61;
+        windupFillRenderer.transform.localScale = new Vector3(0f, windupBarHeight * 0.8f, 1f);
+
+        windupBarObj.SetActive(false);
+    }
+
+    private void UpdateWindupBar(bool visible)
+    {
+        if (windupBarObj == null) return;
+
+        windupBarObj.SetActive(visible);
+        if (!visible) return;
+
+        windupBarObj.transform.position = transform.position + Vector3.up * windupBarYOffset;
+
+        float cooldownDuration = 1f / Mathf.Max(0.0001f, EffectiveFireRate);
+        float remaining = Mathf.Max(0f, nextShotTime - Time.time);
+        float ratio = cooldownDuration > 0f ? 1f - Mathf.Clamp01(remaining / cooldownDuration) : 1f;
+        windupFillRenderer.transform.localScale = new Vector3(windupBarWidth * ratio, windupBarHeight * 0.8f, 1f);
+    }
+
+    private void OnMouseDown()
+    {
+        if (data == null) return;
+        if (EventSystem.current != null && EventSystem.current.IsPointerOverGameObject()) return;
+        TowerDetailPopupUI.Instance?.Show(this);
     }
 
     public void Configure(TowerSO towerData)
@@ -146,7 +218,12 @@ public class Tower : MonoBehaviour
 
         Enemy target = FindClosestEnemyInRange();
         if (target == null)
+        {
+            UpdateWindupBar(false);
             return;
+        }
+
+        UpdateWindupBar(true);
 
         bool isAimed = RotateVisualTowards(target);
 
@@ -235,7 +312,7 @@ public class Tower : MonoBehaviour
         // true continuous currentAngle), independent of how ApplyVisualRotation
         // chooses to render it -- so it's unaffected by the fold/flip trick.
         float firePointWorldAngle = currentAngle + firePointLocalAngle;
-        return Mathf.Abs(Mathf.DeltaAngle(firePointWorldAngle, desiredWorldAngle)) < 2f;
+        return Mathf.Abs(Mathf.DeltaAngle(firePointWorldAngle, desiredWorldAngle)) <= data.fireArcDegrees * 0.5f;
     }
 
     private void FireAt(Enemy target)

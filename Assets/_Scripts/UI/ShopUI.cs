@@ -10,7 +10,7 @@ public class ShopUI : MonoBehaviour
 {
     [Header("Layout")]
     public float cardWidth = 350f;
-    public float cardHeight = 475f;
+    public float cardHeight = 520f;
     public float cardGap = 45f;
     public float padding = 60f;
     public float titleRowHeight = 90f;
@@ -63,9 +63,9 @@ public class ShopUI : MonoBehaviour
 
     [Header("Rarity Colors")]
     public Color commonRarityColor    = new Color(0.6275f, 0.6275f, 0.6275f, 1f); // Simple Utility
-    public Color uncommonRarityColor  = new Color(0f, 0.6588f, 0.5882f, 1f);      // Seafoam Teal
-    public Color rareRarityColor      = new Color(0.6078f, 0.3647f, 0.8980f, 1f); // Coral Purple
-    public Color epicRarityColor      = new Color(0.9451f, 0.3569f, 0.7098f, 1f); // Neon Jelly Pink
+    public Color uncommonRarityColor  = new Color(0.1804f, 0.5451f, 0.3412f, 1f); // KelpHaze Green (#2E8B57)
+    public Color rareRarityColor      = new Color(0f, 0.9608f, 0.8314f, 1f);      // Bioluminescent Teal
+    public Color epicRarityColor      = new Color(1f, 0.3294f, 0.4392f, 1f);      // Anemone Pink
     public Color legendaryRarityColor = new Color(1f, 0.8431f, 0f, 1f);           // Jackpot Gold
 
     [System.Serializable]
@@ -127,7 +127,7 @@ public class ShopUI : MonoBehaviour
             shop.ShopOpened += OnShopOpened;
             shop.ShopClosed += OnShopClosed;
             shop.ShopRefreshed += RefreshCards;
-            rerollLabel.text = $"Reroll ({shop.rerollCost})";
+            rerollLabel.text = shop.NextRerollIsFree ? "Reroll (FREE)" : $"Reroll (${shop.NextRerollCost})";
         }
 
         if (ScoreManager.Instance != null)
@@ -152,10 +152,6 @@ public class ShopUI : MonoBehaviour
             ScoreManager.Instance.ScoreChanged -= OnScoreChanged;
     }
 
-    // The shop theme is driven directly off these events (rather than
-    // indirectly through RoundManager) so it's tied precisely to whether the
-    // shop itself is open, and reliably keeps looping in the background --
-    // SFX all play on a separate AudioSource so they never interrupt it.
     private void OnShopOpened()
     {
         Show();
@@ -203,7 +199,6 @@ public class ShopUI : MonoBehaviour
         appearRoutine = null;
     }
 
-    // The shop "slides away" once a round kicks off, instead of just vanishing.
     private IEnumerator PlayDisappearAnimation()
     {
         Vector3 startScale = innerPanel.localScale;
@@ -260,9 +255,6 @@ public class ShopUI : MonoBehaviour
         ResizePanel();
     }
 
-    // Locking can leave some slots filled and others empty at the same time,
-    // so the reroll button always sits in its small top-left spot -- it can
-    // no longer take over the whole panel as a single all-or-nothing prompt.
     private void ApplyRerollButtonMode(bool revealed)
     {
         if (rerollFlashRoutine != null) StopCoroutine(rerollFlashRoutine);
@@ -273,14 +265,31 @@ public class ShopUI : MonoBehaviour
         rerollRT.anchoredPosition = new Vector2(padding, -(titleRowHeight + rerollRowGap));
         rerollRT.sizeDelta = new Vector2(rerollButtonWidth, rerollButtonHeight);
         rerollLabel.fontSize = 26;
-        rerollLabel.text = revealed ? $"Reroll ({shop.rerollCost})" : "SPIN FOR TOWERS!";
-        rerollImg.color = rerollButtonColor;
 
+        // --- FREE INITIAL SPIN AND RE-ROLL ADJUSTMENTS ---
         if (!revealed)
+        {
+            rerollLabel.text = "SPIN FOR TOWERS!";
             rerollFlashRoutine = StartCoroutine(FlashRerollButton());
-
-        int score = ScoreManager.Instance != null ? ScoreManager.Instance.Score : 0;
-        rerollButton.interactable = shop.IsOpen && score >= shop.rerollCost;
+            rerollButton.interactable = shop.IsOpen;
+        }
+        else
+        {
+            if (shop.NextRerollIsFree)
+            {
+                rerollLabel.text = "Reroll (FREE)";
+                rerollButton.interactable = shop.IsOpen;
+            }
+            else
+            {
+                int currentCost = shop.NextRerollCost;
+                rerollLabel.text = $"Reroll (${currentCost})";
+                int score = ScoreManager.Instance != null ? ScoreManager.Instance.Score : 0;
+                rerollButton.interactable = shop.IsOpen && score >= currentCost;
+            }
+        }
+        
+        rerollImg.color = rerollButtonColor;
     }
 
     private IEnumerator FlashRerollButton()
@@ -295,8 +304,6 @@ public class ShopUI : MonoBehaviour
         }
     }
 
-    // An empty (not-yet-rerolled) slot just shows a placeholder -- the player
-    // has to spend a reroll to fill it in.
     private GameObject CreateEmptyCard(int index)
     {
         float xPos = padding + index * (cardWidth + cardGap);
@@ -397,8 +404,8 @@ public class ShopUI : MonoBehaviour
         GameObject iconObj = new GameObject("Icon");
         iconObj.transform.SetParent(innerObj.transform, false);
         RectTransform iconRT = iconObj.AddComponent<RectTransform>();
-        iconRT.anchorMin = new Vector2(0.2f, 0.42f);
-        iconRT.anchorMax = new Vector2(0.8f, 0.92f);
+        iconRT.anchorMin = new Vector2(0.2f, 0.4615f);
+        iconRT.anchorMax = new Vector2(0.8f, 0.9183f);
         iconRT.offsetMin = iconRT.offsetMax = Vector2.zero;
         Image iconImg = iconObj.AddComponent<Image>();
         iconImg.preserveAspect = true;
@@ -407,9 +414,7 @@ public class ShopUI : MonoBehaviour
         GameObject labelObj = new GameObject("Label");
         labelObj.transform.SetParent(innerObj.transform, false);
         RectTransform labelRT = labelObj.AddComponent<RectTransform>();
-        labelRT.anchorMin = new Vector2(0f, 0.7f);
-        // Narrowed from full width (1f) so the lock badge has its own clear
-        // corner at top-right instead of sitting on top of the name text.
+        labelRT.anchorMin = new Vector2(0f, 0.7173f);
         labelRT.anchorMax = new Vector2(0.76f, 1f);
         labelRT.offsetMin = labelRT.offsetMax = Vector2.zero;
         var label = labelObj.AddComponent<TextMeshProUGUI>();
@@ -420,18 +425,30 @@ public class ShopUI : MonoBehaviour
         GameObject costObj = new GameObject("Cost");
         costObj.transform.SetParent(innerObj.transform, false);
         RectTransform costRT = costObj.AddComponent<RectTransform>();
-        costRT.anchorMin = new Vector2(0f, 0.28f);
-        costRT.anchorMax = new Vector2(1f, 0.42f);
+        costRT.anchorMin = new Vector2(0f, 0.3337f);
+        costRT.anchorMax = new Vector2(1f, 0.4615f);
         costRT.offsetMin = costRT.offsetMax = Vector2.zero;
         var costLabel = costObj.AddComponent<TextMeshProUGUI>();
         costLabel.fontSize = 30;
         costLabel.alignment = TextAlignmentOptions.Center;
 
+        GameObject statsObj = new GameObject("Stats");
+        statsObj.transform.SetParent(innerObj.transform, false);
+        RectTransform statsRT = statsObj.AddComponent<RectTransform>();
+        statsRT.anchorMin = new Vector2(0.05f, 0.2375f);
+        statsRT.anchorMax = new Vector2(0.95f, 0.3337f);
+        statsRT.offsetMin = statsRT.offsetMax = Vector2.zero;
+        var statsLabel = statsObj.AddComponent<TextMeshProUGUI>();
+        statsLabel.fontSize = 13;
+        statsLabel.alignment = TextAlignmentOptions.Center;
+        statsLabel.color = cardLabelTextColor;
+        statsLabel.overflowMode = TextOverflowModes.Truncate;
+
         GameObject buttonObj = new GameObject("BuyButton");
         buttonObj.transform.SetParent(innerObj.transform, false);
         RectTransform buttonRT = buttonObj.AddComponent<RectTransform>();
-        buttonRT.anchorMin = new Vector2(0.08f, 0.06f);
-        buttonRT.anchorMax = new Vector2(0.92f, 0.26f);
+        buttonRT.anchorMin = new Vector2(0.08f, 0.0548f);
+        buttonRT.anchorMax = new Vector2(0.92f, 0.2375f);
         buttonRT.offsetMin = buttonRT.offsetMax = Vector2.zero;
         Image buttonImg = buttonObj.AddComponent<Image>();
         buttonImg.color = affordableColor;
@@ -451,9 +468,6 @@ public class ShopUI : MonoBehaviour
         int capturedIndex = index;
         button.onClick.AddListener(() => OnBuyClicked(capturedIndex, borderObj));
 
-        // Clicking anywhere on the card besides the Buy button itself opens
-        // the stat/description popup -- TowerSO stats for Tower cards,
-        // ShopCardSO stats for everything else.
         if (offer.rewardType == SpinFortRewardType.Tower)
         {
             TowerCardClickHandler clickHandler = borderObj.AddComponent<TowerCardClickHandler>();
@@ -468,8 +482,6 @@ public class ShopUI : MonoBehaviour
         GameObject lockObj = new GameObject("LockButton");
         lockObj.transform.SetParent(innerObj.transform, false);
         RectTransform lockRT = lockObj.AddComponent<RectTransform>();
-        // Sits in the corner freed up by narrowing the name label above, so
-        // it never overlaps the tower name text.
         lockRT.anchorMin = new Vector2(0.78f, 0.86f);
         lockRT.anchorMax = new Vector2(0.98f, 1f);
         lockRT.offsetMin = lockRT.offsetMax = Vector2.zero;
@@ -496,12 +508,13 @@ public class ShopUI : MonoBehaviour
         {
             button.interactable = false;
             buttonLabel.text = "...";
-            Coroutine routine = StartCoroutine(SpinThenReveal(offer, index, isPurchased, canAfford, label, costLabel, iconImg, button, buttonLabel));
+            statsLabel.text = "";
+            Coroutine routine = StartCoroutine(SpinThenReveal(offer, index, isPurchased, canAfford, label, costLabel, iconImg, button, buttonLabel, statsLabel));
             itemSpinRoutines.Add(routine);
         }
         else
         {
-            ApplyFinalCardContent(offer, isPurchased, canAfford, label, costLabel, iconImg, button, buttonLabel);
+            ApplyFinalCardContent(offer, isPurchased, canAfford, label, costLabel, iconImg, button, buttonLabel, statsLabel);
         }
 
         return borderObj;
@@ -519,7 +532,6 @@ public class ShopUI : MonoBehaviour
         }
     }
 
-    // Higher rarities pulse brighter (more "sparkly"); Common stays static.
     private float GetRarityGlowIntensity(CardRarity rarity)
     {
         switch (rarity)
@@ -556,8 +568,6 @@ public class ShopUI : MonoBehaviour
         }
     }
 
-    // Public so other card-rendering UIs (e.g. the upgrade inventory) can
-    // reuse the exact same border art/animation instead of duplicating it.
     public BorderArt GetBorderArt(CardRarity rarity)
     {
         switch (rarity)
@@ -570,10 +580,6 @@ public class ShopUI : MonoBehaviour
         }
     }
 
-    // Uses the legacy Animation component (not Animator) so any AnimationClip
-    // can just be dropped in and looped at runtime with zero extra setup --
-    // no AnimatorController asset to author. Works for sprite-swap, color,
-    // scale, rotation, whatever the clip keys on the border Image/RectTransform.
     public static void PlayBorderAnimation(GameObject borderObj, AnimationClip clip)
     {
         Animation anim = borderObj.GetComponent<Animation>();
@@ -587,7 +593,7 @@ public class ShopUI : MonoBehaviour
     }
 
     private IEnumerator SpinThenReveal(ShopCardSO offer, int index, bool isPurchased, bool canAfford,
-        TextMeshProUGUI label, TextMeshProUGUI costLabel, Image iconImg, Button button, TextMeshProUGUI buttonLabel)
+        TextMeshProUGUI label, TextMeshProUGUI costLabel, Image iconImg, Button button, TextMeshProUGUI buttonLabel, TextMeshProUGUI statsLabel)
     {
         float duration = itemSpinBaseDuration + index * itemSpinStaggerPerCard;
         float elapsed = 0f;
@@ -600,8 +606,6 @@ public class ShopUI : MonoBehaviour
 
             tickTimer += Time.deltaTime;
 
-            // Flicker rate decelerates over the course of the spin -- fast at
-            // first, slowing down right before landing, like a real reel.
             float progress = duration > 0f ? Mathf.Clamp01(elapsed / duration) : 1f;
             float eased = Mathf.Pow(progress, itemSpinEaseExponent);
             float currentTickInterval = Mathf.Lerp(itemSpinTickIntervalStart, itemSpinTickIntervalEnd, eased);
@@ -611,7 +615,7 @@ public class ShopUI : MonoBehaviour
                 tickTimer = 0f;
                 var randomOffer = pool[Random.Range(0, pool.Count)];
                 label.text = randomOffer.label;
-                costLabel.text = $"{randomOffer.cost} pts";
+                costLabel.text = $"${randomOffer.cost}";
                 costLabel.color = affordableColor;
 
                 Sprite randomIcon = randomOffer.icon != null ? randomOffer.icon
@@ -625,16 +629,19 @@ public class ShopUI : MonoBehaviour
         }
 
         if (label == null || costLabel == null || iconImg == null || button == null || buttonLabel == null) yield break;
-        ApplyFinalCardContent(offer, isPurchased, canAfford, label, costLabel, iconImg, button, buttonLabel);
+        ApplyFinalCardContent(offer, isPurchased, canAfford, label, costLabel, iconImg, button, buttonLabel, statsLabel);
     }
 
     private void ApplyFinalCardContent(ShopCardSO offer, bool isPurchased, bool canAfford,
-        TextMeshProUGUI label, TextMeshProUGUI costLabel, Image iconImg, Button button, TextMeshProUGUI buttonLabel)
+        TextMeshProUGUI label, TextMeshProUGUI costLabel, Image iconImg, Button button, TextMeshProUGUI buttonLabel, TextMeshProUGUI statsLabel)
     {
         label.text = offer.label;
 
-        costLabel.text = $"{offer.cost} pts";
+        costLabel.text = $"${offer.cost}";
         costLabel.color = canAfford ? affordableColor : unaffordableColor;
+
+        if (statsLabel != null)
+            statsLabel.text = BuildCompactStatsLine(offer);
 
         Sprite icon = offer.icon != null ? offer.icon
             : (offer.towerReward != null ? offer.towerReward.icon : null);
@@ -643,6 +650,25 @@ public class ShopUI : MonoBehaviour
 
         buttonLabel.text = isPurchased ? "SOLD" : "BUY";
         button.interactable = !isPurchased && canAfford;
+    }
+
+    // Condensed, single-line readout for the card itself (the full multi-line
+    // breakdown -- including cost/rarity, already shown elsewhere on the card
+    // -- still lives in TowerDetailPopupUI for the click-to-expand popup).
+    private string BuildCompactStatsLine(ShopCardSO offer)
+    {
+        if (offer.rewardType == SpinFortRewardType.Tower && offer.towerReward != null)
+        {
+            TowerSO t = offer.towerReward;
+            string attack = t.isMelee ? "Melee" : $"{t.projectileSpeed:0.#} spd";
+            return $"Rng {t.range:0.#}  |  Dmg {t.damage}  |  {t.fireRate:0.#}/s  |  {attack}";
+        }
+
+        string full = TowerDetailPopupUI.BuildStatsText(offer);
+        int firstBreak = full.IndexOf('\n');
+        int secondBreak = firstBreak >= 0 ? full.IndexOf('\n', firstBreak + 1) : -1;
+        string effect = secondBreak >= 0 ? full.Substring(secondBreak + 1) : full;
+        return effect.Replace("\n", "  |  ");
     }
 
     private void OnLockClicked(int index)
@@ -762,14 +788,7 @@ public class ShopUI : MonoBehaviour
         GameObject rerollObj = new GameObject("RerollButton");
         rerollObj.transform.SetParent(innerPanel, false);
         rerollRT = rerollObj.AddComponent<RectTransform>();
-        rerollRT.anchorMin = new Vector2(0f, 1f);
-        rerollRT.anchorMax = new Vector2(0f, 1f);
-        rerollRT.pivot = new Vector2(0f, 1f);
-        rerollRT.anchoredPosition = new Vector2(padding, -(titleRowHeight + rerollRowGap));
-        rerollRT.sizeDelta = new Vector2(rerollButtonWidth, rerollButtonHeight);
-
         rerollImg = rerollObj.AddComponent<Image>();
-        rerollImg.color = rerollButtonColor;
         rerollButton = rerollObj.AddComponent<Button>();
         rerollButton.onClick.AddListener(OnRerollClicked);
 
@@ -780,22 +799,15 @@ public class ShopUI : MonoBehaviour
         labelRT.anchorMax = Vector2.one;
         labelRT.offsetMin = labelRT.offsetMax = Vector2.zero;
         rerollLabel = labelObj.AddComponent<TextMeshProUGUI>();
-        rerollLabel.fontSize = 26;
         rerollLabel.alignment = TextAlignmentOptions.Center;
-        rerollLabel.color = cardTextColor;
+        rerollLabel.color = Color.black;
     }
 
     private void ResizePanel()
     {
-        int count = cards.Count;
-        float cardsWidth = count > 0
-            ? count * cardWidth + (count - 1) * cardGap
-            : cardWidth;
-
-        float minHeaderWidth = padding * 2f + rerollButtonWidth + closeButtonSize;
-        float width = Mathf.Max(padding * 2f + cardsWidth, minHeaderWidth);
-        float height = padding * 2f + cardHeight + topGap + titleRowHeight + rerollRowGap + rerollButtonHeight;
-
-        innerPanel.sizeDelta = new Vector2(width, height);
+        int count = shop != null ? shop.CurrentOffers.Count : 0;
+        float totalWidth = padding * 2f + count * cardWidth + Mathf.Max(0, count - 1) * cardGap;
+        float totalHeight = padding * 2f + cardHeight + titleRowHeight + rerollRowGap + rerollButtonHeight + topGap;
+        innerPanel.sizeDelta = new Vector2(totalWidth, totalHeight);
     }
 }

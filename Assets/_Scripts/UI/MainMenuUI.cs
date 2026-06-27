@@ -20,6 +20,7 @@ public class MainMenuUI : MonoBehaviour
     public Color titleColor    = new Color(1f, 0.8431f, 0f, 1f);          
 
     private GameObject createdCanvasObj;
+    private GameObject settingsPanelObj;
 
     private void Awake()
     {
@@ -128,9 +129,28 @@ public class MainMenuUI : MonoBehaviour
         subtitleLabel.alignment = TextAlignmentOptions.Center;
         subtitleLabel.color = Color.white;
 
+        GameObject highScoreObj = new GameObject("HighScoreLabel");
+        highScoreObj.transform.SetParent(backdropObj.transform, false);
+        RectTransform highScoreRT = highScoreObj.AddComponent<RectTransform>();
+        highScoreRT.anchorMin = highScoreRT.anchorMax = new Vector2(0.5f, 0.49f);
+        highScoreRT.pivot = new Vector2(0.5f, 0.5f);
+        highScoreRT.anchoredPosition = Vector2.zero;
+        highScoreRT.sizeDelta = new Vector2(900f, 40f);
+        var highScoreLabel = highScoreObj.AddComponent<TextMeshProUGUI>();
+        highScoreLabel.text = $"High Score: {ScoreManager.HighScore}";
+        highScoreLabel.fontSize = 24;
+        highScoreLabel.alignment = TextAlignmentOptions.Center;
+        highScoreLabel.color = titleColor;
+
         BuildButton(backdropObj.transform, "PlayButton", "PLAY", new Vector2(0.5f, 0.40f), OnPlayClicked);
-        BuildButton(backdropObj.transform, "QuitButton", "QUIT", new Vector2(0.5f, 0.28f), OnQuitClicked);
+        BuildButton(backdropObj.transform, "SettingsButton", "SETTINGS", new Vector2(0.5f, 0.28f), OnSettingsClicked);
+        BuildButton(backdropObj.transform, "QuitButton", "QUIT", new Vector2(0.5f, 0.16f), OnQuitClicked);
+
+        settingsPanelObj = SettingsSliderUI.BuildVolumePanel(backdropObj.transform, new Vector2(0f, 40f), buttonColor);
+        settingsPanelObj.SetActive(false);
     }
+
+    private void OnSettingsClicked() => settingsPanelObj.SetActive(!settingsPanelObj.activeSelf);
 
     private void BuildButton(Transform parent, string name, string text, Vector2 anchor, UnityEngine.Events.UnityAction onClick)
     {

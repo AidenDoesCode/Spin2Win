@@ -24,6 +24,13 @@ public class SpinFortShopManager : MonoBehaviour
 
     public int rerollCost { get; private set; }
 
+    // The very first spin of each buy phase is free; rerollCost (and its
+    // normal +rerollCostIncrement growth) only kicks in starting with the
+    // second spin.
+    private bool firstRerollUsedThisPhase;
+    public bool NextRerollIsFree => !firstRerollUsedThisPhase;
+    public int NextRerollCost => NextRerollIsFree ? 0 : rerollCost;
+
     public event Action ShopOpened;
     public event Action ShopClosed;
     public event Action ShopRefreshed;
@@ -79,6 +86,7 @@ public class SpinFortShopManager : MonoBehaviour
     private void HandleRoundStarted(int round)
     {
         rerollCost = baseRerollCost;
+        firstRerollUsedThisPhase = false;
         CloseShop();
     }
 
@@ -88,7 +96,6 @@ public class SpinFortShopManager : MonoBehaviour
         if (GameModifiers.Instance != null && GameModifiers.Instance.goldPerRoundBonus > 0)
             ScoreManager.Instance?.AddScore(GameModifiers.Instance.goldPerRoundBonus);
 
-        TowerPlacementManager.Instance?.LockRandomSlot();
         OpenShop();
     }
 
@@ -121,10 +128,14 @@ public class SpinFortShopManager : MonoBehaviour
     {
         if (!IsOpen) return false;
         if (ScoreManager.Instance == null) return false;
-        if (!ScoreManager.Instance.TrySpendScore(rerollCost)) return false;
+        if (!ScoreManager.Instance.TrySpendScore(NextRerollCost)) return false;
 
         RerollOffers();
-        rerollCost += rerollCostIncrement;
+
+        if (firstRerollUsedThisPhase)
+            rerollCost += rerollCostIncrement;
+        firstRerollUsedThisPhase = true;
+
         return true;
     }
 
@@ -176,6 +187,11 @@ public class SpinFortShopManager : MonoBehaviour
 
         ApplyOffer(offer);
         purchased[index] = true;
+        // A locked slot whose card just got bought has nothing left to
+        // protect -- clear the lock too, or OpenShop's "preserve locked
+        // slots" rule would leave this slot stuck on SOLD forever, since a
+        // purchased offer can't be unlocked manually either (see ToggleOfferLock).
+        locked[index] = false;
         ShopRefreshed?.Invoke();
         return true;
     }

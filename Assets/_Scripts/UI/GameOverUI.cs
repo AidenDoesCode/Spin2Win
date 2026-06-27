@@ -16,6 +16,7 @@ public class GameOverUI : MonoBehaviour
 
     private BaseHealth baseHealth;
     private TextMeshProUGUI scoreLabel;
+    private TextMeshProUGUI highScoreLabel;
     private bool uiBuilt = false;
 
     private void Awake()
@@ -72,8 +73,11 @@ public class GameOverUI : MonoBehaviour
         if (scoreLabel != null)
         {
             int score = ScoreManager.Instance != null ? ScoreManager.Instance.Score : 0;
-            scoreLabel.text = $"Final Gold: {score}";
+            scoreLabel.text = $"Final Score: {score}";
         }
+
+        if (highScoreLabel != null)
+            highScoreLabel.text = $"High Score: {ScoreManager.HighScore}";
     }
 
     private void EnsureCanvasExists()
@@ -167,6 +171,21 @@ private void BuildUI()
         scoreLabel.alignment = TextAlignmentOptions.Center;
         scoreLabel.color = Color.white;
         AddShadow(scoreLabel); // ADDED
+
+        // --- THE HIGH SCORE LABEL ---
+        GameObject highScoreObj = new GameObject("HighScore");
+        highScoreObj.transform.SetParent(panelObj.transform, false);
+        RectTransform highScoreRT = highScoreObj.AddComponent<RectTransform>();
+        highScoreRT.anchorMin = new Vector2(0f, 0.5f);
+        highScoreRT.anchorMax = new Vector2(1f, 0.5f);
+        highScoreRT.pivot = new Vector2(0.5f, 0.5f);
+        highScoreRT.anchoredPosition = new Vector2(0f, -30f);
+        highScoreRT.sizeDelta = new Vector2(0f, 30f);
+        highScoreLabel = highScoreObj.AddComponent<TextMeshProUGUI>();
+        highScoreLabel.fontSize = 20;
+        highScoreLabel.alignment = TextAlignmentOptions.Center;
+        highScoreLabel.color = buttonColor;
+        AddShadow(highScoreLabel);
 
         // --- THE ACTION BUTTONS ---
         // Placed along the bottom row with safe vertical padding (+50f offset from floor)

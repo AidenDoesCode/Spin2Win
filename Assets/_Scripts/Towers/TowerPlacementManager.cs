@@ -1,17 +1,12 @@
-using System;
 using UnityEngine;
 using UnityEngine.InputSystem;
 using UnityEngine.EventSystems;
 using UnityEngine.Tilemaps;
+using TMPro;
 
 public class TowerPlacementManager : MonoBehaviour
 {
-public static TowerPlacementManager Instance { get; private set; }
-
-    // Fired whenever a slot's TowerSO reference changes, so LoadoutBarUI can
-    // refresh that one slot's icon without polling the whole array every frame.
-    public event Action<int> SlotChanged;
-
+    public static TowerPlacementManager Instance { get; private set; }
 
     [Header("Placement")]
     public Camera placementCamera;
@@ -29,20 +24,12 @@ public static TowerPlacementManager Instance { get; private set; }
     [Tooltip("If assigned, any cell with a tile here (e.g. your Path tilemap) can never be built on, even if it also has a ground tile.")]
     public Tilemap pathTilemap;
 
-    [Header("Manual Rotation")]
-    [Tooltip("Degrees the placement preview rotates by each time R is pressed.")]
-    public float manualRotationStep = 20f;
-
     [Header("Placement Preview")]
     [Tooltip("Alpha of the ghost sprite shown under the cursor while placing.")]
     [Range(0f, 1f)] public float ghostAlpha = 0.5f;
     public Color highlightValidColor = new Color(0f, 0.6588f, 0.5882f, 0.5f);  // Seafoam Teal
     public Color highlightInvalidColor = new Color(0.8157f, 0f, 0f, 0.5f);    // Card Suit Red
     public int previewSortingOrder = 50;
-
-    [Header("Loadout Slots (1-5)")]
-    public TowerSO[] loadout = new TowerSO[5];
-    public int selectedSlot = 0;
 
     [Header("Selling")]
     [Tooltip("Fraction of a tower's buy cost refunded when right-clicking it off the grid.")]
@@ -54,16 +41,11 @@ public static TowerPlacementManager Instance { get; private set; }
     [Range(0f, 3f)] public float placeVolume = 1f;
     private AudioSource audioSource;
 
-    [Tooltip("-1 = no slot locked. Set by the 'Locked Slot' shop modifier; that slot can't be selected, assigned, or placed from.")]
-    public int lockedSlotIndex = -1;
-
-    // Rotation (in degrees) the player has dialed in for the tower about to be
-    // placed; reset to 0 whenever a different slot is selected.
-    private float pendingRotation = 0f;
-
     private SpriteRenderer ghostRenderer;
     private Transform ghostTransform;
     private SpriteRenderer highlightRenderer;
+    private SpriteRenderer rangeRenderer;
+    private TextMeshPro rangeLabel;
 
     private void Awake()
     {
@@ -75,6 +57,12 @@ public static TowerPlacementManager Instance { get; private set; }
 
         BuildPreviewObjects();
     }
+
+    private void OnDestroy()
+    {
+        if (Instance == this) Instance = null;
+    }
+
     private void Start()
     {
         if (placementCamera == null)
@@ -85,13 +73,6 @@ public static TowerPlacementManager Instance { get; private set; }
 
     private void Update()
     {
-        HandleSlotSelection();
-        HandleManualRotation();
-        UpdatePlacementPreview();
-
-        if (Mouse.current != null && Mouse.current.leftButton.wasPressedThisFrame)
-            TryPlaceSelectedTower();
-
         if (Mouse.current != null && Mouse.current.rightButton.wasPressedThisFrame)
             TrySellTowerAtMouse();
     }
@@ -119,97 +100,27 @@ public static TowerPlacementManager Instance { get; private set; }
         return true;
     }
 
-    public void SelectSlot(int index)
+    // Drag-and-drop placement: dragging a card from the inventory panel onto
+    // the grid places it immediately.
+    public bool TryPlaceTowerAtScreenPoint(TowerSO tower, Vector2 screenPoint)
     {
-        if (index < 0 || index >= loadout.Length) return;
-        if (index == lockedSlotIndex) return;
-        if (selectedSlot != index) pendingRotation = 0f;
-        selectedSlot = index;
-    }
-
-    // Called by the UI when the player drags a tower into a slot
-    public bool AssignTowerToSlot(TowerSO tower, int slotIndex)
-    {
-        if (slotIndex < 0 || slotIndex >= loadout.Length) return false;
-        if (slotIndex == lockedSlotIndex) return false;
-        loadout[slotIndex] = tower;
-        Debug.Log($"TowerPlacementManager: Slot {slotIndex + 1} assigned {(tower != null ? tower.towerName : "empty")}");
-        SlotChanged?.Invoke(slotIndex);
-        return true;
-    }
-
-    // Called by SpinFortShopManager whenever the shop spins, to freeze a
-    // random hand slot for the upcoming wave ("Locked Slot" modifier).
-    public void LockRandomSlot()
-    {
-        lockedSlotIndex = UnityEngine.Random.Range(0, loadout.Length);
-
-        if (selectedSlot == lockedSlotIndex)
-        {
-            for (int i = 0; i < loadout.Length; i++)
-            {
-                if (i == lockedSlotIndex) continue;
-                selectedSlot = i;
-                break;
-            }
-        }
-    }
-
-    public void ClearLockedSlot() => lockedSlotIndex = -1;
-
-    // Removes whatever tower occupies a slot, bypassing the lock check.
-    // Used when recycling a tower (including one stuck in the locked slot).
-    public void ClearSlot(int slotIndex)
-    {
-        if (slotIndex < 0 || slotIndex >= loadout.Length) return;
-        loadout[slotIndex] = null;
-        SlotChanged?.Invoke(slotIndex);
-    }
-
-    private void HandleSlotSelection()
-    {
-        if (Keyboard.current == null) return;
-        if (Keyboard.current.digit1Key.wasPressedThisFrame) SelectSlot(0);
-        if (Keyboard.current.digit2Key.wasPressedThisFrame) SelectSlot(1);
-        if (Keyboard.current.digit3Key.wasPressedThisFrame) SelectSlot(2);
-        if (Keyboard.current.digit4Key.wasPressedThisFrame) SelectSlot(3);
-        if (Keyboard.current.digit5Key.wasPressedThisFrame) SelectSlot(4);
-    }
-
-    // Lets the player dial in which way the tower's FirePoint faces before it's
-    // committed to the grid, since not every tower's art faces the same default
-    // direction. The chosen angle is handed to the Tower on placement and then
-    // becomes its starting aim -- it'll still swivel from there to track enemies.
-    private void HandleManualRotation()
-    {
-        if (Keyboard.current == null) return;
-        if (!Keyboard.current.rKey.wasPressedThisFrame) return;
-
-        pendingRotation = (pendingRotation + manualRotationStep) % 360f;
-    }
-
-    public bool TryPlaceSelectedTower()
-    {
-        // Block if mouse is over UI
-        if (EventSystem.current != null && EventSystem.current.IsPointerOverGameObject())
-            return false;
-
         if (placementCamera == null) return false;
+        Vector2 worldPos = GetSnappedWorldPosition(screenPoint);
+        return TryPlaceTowerAt(tower, worldPos);
+    }
 
+    private bool TryPlaceTowerAt(TowerSO selected, Vector2 worldPos)
+    {
         if (RoundManager.Instance != null && RoundManager.Instance.IsRoundActive())
             return false;
+        if (RoundContinueUI.IsTransitioning) return false;
 
-        if (selectedSlot == lockedSlotIndex) return false;
-
-        TowerSO selected = loadout[selectedSlot];
         if (selected == null || selected.towerPrefab == null) return false;
 
         // Card consumption: placing a tower spends one owned copy of it. With
-        // none left, the slot can't place again until another is bought.
+        // none left, it can't be placed again until another is bought.
         if (PlayerTowerInventory.Instance == null || !PlayerTowerInventory.Instance.HasTower(selected))
             return false;
-
-        Vector2 worldPos = GetSnappedMouseWorldPosition();
 
         if (!IsInsideBuildArea(worldPos)) return false;
         if (!IsTileAllowed(worldPos)) return false;
@@ -228,15 +139,10 @@ public static TowerPlacementManager Instance { get; private set; }
         }
 
         tower.Configure(selected);
-        tower.SetInitialRotation(pendingRotation);
+        tower.SetInitialRotation(0f);
         tower.PlaySquash(); // ADDED: squash pop on successful placement
 
         PlayerTowerInventory.Instance.RemoveTower(selected);
-        if (!PlayerTowerInventory.Instance.HasTower(selected))
-        {
-            loadout[selectedSlot] = null;
-            SlotChanged?.Invoke(selectedSlot);
-        }
 
         if (placeSound != null) audioSource.PlayOneShot(placeSound, placeVolume * SfxSettings.Volume);
 
@@ -245,9 +151,14 @@ public static TowerPlacementManager Instance { get; private set; }
 
     private Vector2 GetSnappedMouseWorldPosition()
     {
-        Vector3 mousePos = Mouse.current != null ? (Vector3)Mouse.current.position.ReadValue() : Vector3.zero;
+        Vector2 mousePos = Mouse.current != null ? Mouse.current.position.ReadValue() : Vector2.zero;
+        return GetSnappedWorldPosition(mousePos);
+    }
+
+    private Vector2 GetSnappedWorldPosition(Vector2 screenPos)
+    {
         float camZ = -placementCamera.transform.position.z;
-        Vector3 world = placementCamera.ScreenToWorldPoint(new Vector3(mousePos.x, mousePos.y, camZ));
+        Vector3 world = placementCamera.ScreenToWorldPoint(new Vector3(screenPos.x, screenPos.y, camZ));
 
         // Prefer asking the actual tilemap Grid for the cell center -- this is
         // exactly what the tile art is drawn against, so it can't drift out of
@@ -327,6 +238,23 @@ public static TowerPlacementManager Instance { get; private set; }
         highlightRenderer.sprite = CreateSquareSprite();
         highlightRenderer.sortingOrder = previewSortingOrder - 1;
         highlightObj.SetActive(false);
+
+        GameObject rangeObj = new GameObject("PlacementRangeCircle");
+        rangeObj.transform.SetParent(transform, false);
+        rangeRenderer = rangeObj.AddComponent<SpriteRenderer>();
+        rangeRenderer.sprite = CreateRingSprite();
+        rangeRenderer.color = new Color(1f, 1f, 1f, 0.6f);
+        rangeRenderer.sortingOrder = previewSortingOrder - 2;
+        rangeObj.SetActive(false);
+
+        GameObject rangeLabelObj = new GameObject("PlacementRangeLabel");
+        rangeLabelObj.transform.SetParent(transform, false);
+        rangeLabel = rangeLabelObj.AddComponent<TextMeshPro>();
+        rangeLabel.alignment = TextAlignmentOptions.Center;
+        rangeLabel.fontSize = 3f;
+        rangeLabel.color = Color.white;
+        rangeLabel.sortingOrder = previewSortingOrder;
+        rangeLabelObj.SetActive(false);
     }
 
     private static Sprite CreateSquareSprite()
@@ -337,65 +265,118 @@ public static TowerPlacementManager Instance { get; private set; }
         return Sprite.Create(texture, new Rect(0f, 0f, 1f, 1f), new Vector2(0.5f, 0.5f), 1f);
     }
 
-    private void UpdatePlacementPreview()
+    // Thin translucent ring -- used to show a tower's attack range while
+    // dragging it from the inventory. localScale is later set to the range
+    // diameter, so this sprite's PixelsPerUnit is fixed at 1 so it maps 1:1
+    // to world units.
+    private static Sprite CreateRingSprite()
     {
-        if (!CanShowPreview(out TowerSO selected))
+        const int size = 128;
+        const float thickness = 0.06f; // fraction of the radius
+        var texture = new Texture2D(size, size);
+        Vector2 center = new Vector2(size / 2f, size / 2f);
+        float outerRadius = size / 2f;
+        float innerRadius = outerRadius * (1f - thickness);
+
+        for (int y = 0; y < size; y++)
         {
-            ghostTransform.gameObject.SetActive(false);
-            highlightRenderer.gameObject.SetActive(false);
+            for (int x = 0; x < size; x++)
+            {
+                float dist = Vector2.Distance(new Vector2(x + 0.5f, y + 0.5f), center);
+                bool onRing = dist <= outerRadius && dist >= innerRadius;
+                texture.SetPixel(x, y, onRing ? Color.white : new Color(1f, 1f, 1f, 0f));
+            }
+        }
+        texture.Apply();
+        return Sprite.Create(texture, new Rect(0f, 0f, size, size), new Vector2(0.5f, 0.5f), size);
+    }
+
+    // Drag preview: called by TowerDragUI each frame a tower card from the
+    // inventory is being dragged, so the ghost/highlight/range visuals appear
+    // under the cursor while the player decides where to drop it.
+    public void UpdateDragPreview(TowerSO tower, Vector2 screenPoint)
+    {
+        bool roundActive = RoundManager.Instance != null && RoundManager.Instance.IsRoundActive();
+        bool overUI = EventSystem.current != null && EventSystem.current.IsPointerOverGameObject();
+        if (tower == null || placementCamera == null || roundActive || overUI || RoundContinueUI.IsTransitioning)
+        {
+            HidePreview();
             return;
         }
 
-        Vector2 point = GetSnappedMouseWorldPosition();
+        ShowPreviewAt(tower, GetSnappedWorldPosition(screenPoint));
+    }
+
+    // Called by TowerDragUI when a drag ends, regardless of whether it
+    // resulted in a placement.
+    public void EndDragPreview()
+    {
+        HidePreview();
+    }
+
+    private void HidePreview()
+    {
+        ghostTransform.gameObject.SetActive(false);
+        highlightRenderer.gameObject.SetActive(false);
+        HideRangeRing();
+    }
+
+    private void ShowPreviewAt(TowerSO selected, Vector2 point)
+    {
         bool valid = IsInsideBuildArea(point) && IsTileAllowed(point) && Physics2D.OverlapCircle(point, blockingRadius, blockedMask) == null;
 
         ghostTransform.gameObject.SetActive(true);
         ghostTransform.position = point;
-
-        float displayAngle = TopDownAim.Fold(pendingRotation, 0f, out bool flipped);
-        ghostTransform.rotation = Quaternion.Euler(0f, 0f, displayAngle);
+        ghostTransform.rotation = Quaternion.identity;
         ghostRenderer.sprite = selected.icon;
         ghostRenderer.color = new Color(1f, 1f, 1f, ghostAlpha);
-        FitGhostToGrid(selected.icon, flipped, selected.visualScaleMultiplier);
+        FitGhostToGrid(selected.icon, selected.visualScaleMultiplier);
 
         highlightRenderer.gameObject.SetActive(true);
         highlightRenderer.transform.position = point;
         highlightRenderer.transform.localScale = Vector3.one * EffectiveCellSize();
         highlightRenderer.color = valid ? highlightValidColor : highlightInvalidColor;
+
+        ShowRangeRingAt(point, selected.range);
+    }
+
+    // Drives the range ring + tile-radius label -- shared by the drag preview
+    // above and TowerDetailPopupUI's click-to-inspect view of a placed tower.
+    public void ShowRangeRingAt(Vector2 point, float range)
+    {
+        rangeRenderer.gameObject.SetActive(true);
+        rangeRenderer.transform.position = point;
+        rangeRenderer.transform.localScale = Vector3.one * (range * 2f);
+
+        // Range is already in world units that line up 1:1 with the grid
+        // (EffectiveCellSize), so dividing by the cell size reads it off as
+        // a tile-radius count rather than an abstract world-unit number.
+        rangeLabel.gameObject.SetActive(true);
+        rangeLabel.transform.position = point + new Vector2(0f, range + 0.4f);
+        rangeLabel.text = $"{range / EffectiveCellSize():0.#} tiles";
+    }
+
+    public void HideRangeRing()
+    {
+        rangeRenderer.gameObject.SetActive(false);
+        rangeLabel.gameObject.SetActive(false);
     }
 
     // Icons come from shop/UI art with all sorts of native pixel sizes, so the
     // ghost is rescaled to a consistent fraction of a grid tile, then scaled
     // up by the same visualScaleMultiplier the real placed tower uses, so the
     // preview actually matches the size the tower ends up at.
-    private void FitGhostToGrid(Sprite sprite, bool flipped = false, float visualScaleMultiplier = 1f)
+    private void FitGhostToGrid(Sprite sprite, float visualScaleMultiplier = 1f)
     {
         if (sprite == null)
         {
-            ghostTransform.localScale = new Vector3(flipped ? -visualScaleMultiplier : visualScaleMultiplier, visualScaleMultiplier, visualScaleMultiplier);
+            ghostTransform.localScale = Vector3.one * visualScaleMultiplier;
             return;
         }
 
         Vector2 size = sprite.bounds.size;
         float maxDim = Mathf.Max(size.x, size.y, 0.0001f);
         float scale = (EffectiveCellSize() * 0.8f) / maxDim * visualScaleMultiplier;
-        ghostTransform.localScale = new Vector3(flipped ? -scale : scale, scale, scale);
-    }
-
-    private bool CanShowPreview(out TowerSO selected)
-    {
-        selected = null;
-
-        if (placementCamera == null) return false;
-        if (RoundManager.Instance != null && RoundManager.Instance.IsRoundActive()) return false;
-        if (EventSystem.current != null && EventSystem.current.IsPointerOverGameObject()) return false;
-        if (selectedSlot == lockedSlotIndex) return false;
-
-        TowerSO tower = loadout[selectedSlot];
-        if (tower == null) return false;
-        if (PlayerTowerInventory.Instance == null || !PlayerTowerInventory.Instance.HasTower(tower)) return false;
-
-        selected = tower;
-        return true;
+        ghostTransform.localScale = new Vector3(scale, scale, scale);
     }
 }

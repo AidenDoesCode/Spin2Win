@@ -1,5 +1,6 @@
 using System.Collections;
 using UnityEngine;
+using UnityEngine.SceneManagement;
 
 // Persistent across scene loads (like ScoreManager). Drag your music clips on
 // here and call the Play*Music() methods from wherever the corresponding
@@ -29,6 +30,12 @@ public class MusicManager : MonoBehaviour
     [Tooltip("Shapes the ramp as health drops. >1 keeps the effect subtle until health gets low, then it deepens quickly.")]
     public float lowHealthRampExponent = 2f;
 
+    [Header("Pause Effect")]
+    [Tooltip("Pitch applied to whichever normal track is playing while the pause menu is open.")]
+    [Range(0.1f, 1f)] public float pauseMufflePitch = 0.85f;
+    [Tooltip("Low-pass filter cutoff in Hz while paused. Lower = more muffled.")]
+    public float pauseMuffleCutoff = 1200f;
+
     [Header("Settings")]
     [Range(0f, 3f)] public float volume = 0.6f;
     public float crossfadeDuration = 1.5f;
@@ -46,6 +53,7 @@ public class MusicManager : MonoBehaviour
     private Coroutine fadeRoutine;
     private AudioClip currentClip;
     private bool isGameOver;
+    private bool isPauseMuffled;
     private float lastHealthPercent = 1f;
 
     private void Awake()
@@ -55,6 +63,7 @@ public class MusicManager : MonoBehaviour
             Instance = this;
             if (transform.parent != null) transform.SetParent(null);
             DontDestroyOnLoad(gameObject);
+            SceneManager.sceneLoaded += OnSceneLoaded;
         }
         else
         {
@@ -87,6 +96,70 @@ public class MusicManager : MonoBehaviour
         gameOverSource.ignoreListenerPause = true;
         gameOverFilter = goObj.AddComponent<AudioLowPassFilter>();
         gameOverFilter.cutoffFrequency = 22000f;
+    }
+
+    // Restarting (or returning to the Main Menu and playing again) reloads
+    // the scene, but this object survives via DontDestroyOnLoad -- without an
+    // explicit reset it would carry over whatever pitch/muffle/fade state the
+    // previous run ended on (e.g. still-muffled Game Over audio bleeding into
+    // a freshly restarted round). This puts it back to exactly the state it
+    // was in right after Awake, so the next Play*Music() call behaves like a
+    // true fresh load.
+    private void OnSceneLoaded(Scene scene, LoadSceneMode mode)
+    {
+        if (fadeRoutine != null)
+        {
+            StopCoroutine(fadeRoutine);
+            fadeRoutine = null;
+        }
+
+        sourceA.Stop();
+        sourceB.Stop();
+        gameOverSource.Stop();
+        sourceA.volume = 0f;
+        sourceB.volume = 0f;
+        gameOverSource.volume = 0f;
+        sourceA.pitch = 1f;
+        sourceB.pitch = 1f;
+        normalFilter.cutoffFrequency = 22000f;
+        gameOverFilter.cutoffFrequency = 22000f;
+
+        activeSource = sourceA;
+        currentClip = null;
+        isGameOver = false;
+        isPauseMuffled = false;
+        lastHealthPercent = 1f;
+    }
+
+    // Called by PauseMenuUI whenever the pause menu opens/closes, so the
+    // currently-playing track sounds muffled behind the menu -- mirrors the
+    // Game Over muffle, but reversible (unpausing restores whatever
+    // pitch/cutoff the low-health tension effect currently calls for).
+    public void SetPauseMuffled(bool muffled)
+    {
+        isPauseMuffled = muffled;
+        if (isGameOver) return; // already muffled by the Game Over effect
+
+        if (muffled)
+        {
+            sourceA.pitch = pauseMufflePitch;
+            sourceB.pitch = pauseMufflePitch;
+            normalFilter.cutoffFrequency = pauseMuffleCutoff;
+        }
+        else
+        {
+            SetHealthFactor(lastHealthPercent);
+        }
+    }
+
+    // Lets a settings slider change volume immediately -- changing the
+    // `volume` field alone wouldn't apply until the next crossfade, since
+    // FadeRoutine is what actually writes to the AudioSources.
+    public void SetVolume(float newVolume)
+    {
+        volume = newVolume;
+        AudioSource current = isGameOver ? gameOverSource : activeSource;
+        if (current != null) current.volume = volume;
     }
 
     public void PlayMainMenuMusic() => PlayNormalTrack(mainMenuMusic);

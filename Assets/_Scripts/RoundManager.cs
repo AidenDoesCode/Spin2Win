@@ -57,7 +57,12 @@ public class RoundManager : MonoBehaviour
 
     private bool roundActive = false;
     private bool waitingForPlayerContinue = false;
-    private int bonusBudgetNextRound = 0; 
+    private bool timerPaused = false;
+    private int bonusBudgetNextRound = 0;
+
+    // Lets a UI element (e.g. the card detail popup) hold the buy-phase
+    // countdown steady while it's open, instead of it ticking down unseen.
+    public void SetTimerPaused(bool paused) => timerPaused = paused;
 
     void Awake()
     {
@@ -66,6 +71,11 @@ public class RoundManager : MonoBehaviour
 
         audioSource = gameObject.AddComponent<AudioSource>();
         audioSource.playOnAwake = false;
+    }
+
+    void OnDestroy()
+    {
+        if (Instance == this) Instance = null;
     }
 
     void Start()
@@ -127,29 +137,34 @@ public class RoundManager : MonoBehaviour
         }
     }
 
-    private IEnumerator WaitForContinueOrTimeout()
+private IEnumerator WaitForContinueOrTimeout()
+{
+    float remaining = timeBetweenRounds;
+    bool expiredFired = false;
+    SetupTimerTick?.Invoke(remaining);
+
+    while (waitingForPlayerContinue)
     {
-        float remaining = timeBetweenRounds;
-        bool expiredFired = false;
-        SetupTimerTick?.Invoke(remaining);
+        if (BaseHealth.Instance != null && BaseHealth.Instance.IsDead)
+            yield break;
 
-        while (waitingForPlayerContinue)
+        if (!timerPaused)
         {
-            if (BaseHealth.Instance != null && BaseHealth.Instance.IsDead)
-                yield break;
-
-            remaining = Mathf.Max(0f, remaining - Time.deltaTime);
-            SetupTimerTick?.Invoke(remaining);
+            // FIX: Use Time.unscaledDeltaTime instead of Time.deltaTime
+            // so the buy-phase timer ignores the GameSpeedUI multiplier.
+            remaining = Mathf.Max(0f, remaining - Time.unscaledDeltaTime);
 
             if (remaining <= 0f && !expiredFired)
             {
                 expiredFired = true;
                 SetupTimerExpired?.Invoke();
             }
-
-            yield return null;
         }
+        SetupTimerTick?.Invoke(remaining);
+
+        yield return null;
     }
+}
 
     private IEnumerator StartRound()
     {
@@ -257,5 +272,13 @@ public class RoundManager : MonoBehaviour
         RoundUpdated?.Invoke(CurrentRound, EnemiesRemaining);
     }
 
+    public void ResetManagerForRestart()
+{
+    CurrentRound = 0; // or 1, depending on your setup
+    EnemiesRemaining = 0; 
+    
+    // Fire the event immediately so the UI clears out the old text
+    RoundUpdated?.Invoke(CurrentRound, EnemiesRemaining);
+}
     public bool IsRoundActive() => roundActive;
 }

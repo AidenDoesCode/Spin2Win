@@ -13,7 +13,7 @@ GameObject:
   - component: {fileID: 9195051224621621596}
   - component: {fileID: 7147339839466860684}
   - component: {fileID: 1749196298976308177}
-  m_Layer: 0
+  m_Layer: 11
   m_Name: Enemy
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -111,7 +111,9 @@ MonoBehaviour:
   speedMultiplier: 1
   damageMultiplier: 1
   waypointReachedDistance: 0.15
+  visualScaleMultiplier: 3
   deathSound: {fileID: 8300000, guid: d05b48aae6e3b46dcbabb919ff9e1904, type: 3}
+  deathVolume: 1
 --- !u!50 &7147339839466860684
 Rigidbody2D:
   serializedVersion: 5

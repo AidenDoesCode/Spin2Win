@@ -19,23 +19,24 @@ MonoBehaviour:
   icon: {fileID: 3505091606767975599, guid: a92d41d76a7df4d269abba62221997c0, type: 3}
   description: A bass fish mounted to a sub-woofer that drops heavy audio bass drops
     to blast enemies.
-  rotationSpeed: 60
+  rotationSpeed: 90
   fireRate: 0.5
   projectileSpeed: 12
   damage: 5
+  fireArcDegrees: 50
   isMelee: 0
   projectilePrefab: {fileID: 299504703514488645, guid: 2778266216f947d8bee69a39113dfb57, type: 3}
   towerPrefab: {fileID: 3874816204346800925, guid: 681100dc363bc411b855364da738b3a2, type: 3}
-  visualScaleMultiplier: 1.5
+  screenShakeOnImpact: 1
+  shakeDuration: 0.1
+  shakeMagnitude: 0.05
+  visualScaleMultiplier: 1.2
   projectileScaleRatio: 5
   fireSound: {fileID: 8300000, guid: c4f733d1906ed48cb8f0cd76555ab70e, type: 3}
-  fireVolume: 0.51
+  fireVolume: 0.3
   impactSound: {fileID: 0}
   impactVolume: 1
   idleAnimation: {fileID: 7400000, guid: fae27a27d4e7c458fbd56e22ad2a0266, type: 2}
   fireAnimation: {fileID: 7400000, guid: 18edbde3343b84db89be395398db4b51, type: 2}
   meleeImpactAnimation: {fileID: 0}
   projectileFlightAnimation: {fileID: 7400000, guid: 39e4a62f1789f467084a575d6b020cf3, type: 2}
-  screenShakeOnImpact: 1
-  shakeDuration: 0.1
-  shakeMagnitude: 0.05

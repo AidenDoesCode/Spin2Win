@@ -17,10 +17,10 @@ MonoBehaviour:
   weight: 40
   cost: 15
   rewardType: 7
-  intValue: 15
+  intValue: 5
   floatValue: 0
   duration: 0
   towerReward: {fileID: 0}
   icon: {fileID: -7331433653002981645, guid: 1d45fbe36486540c182fa34396d42d4a, type: 3}
   description: Cheap and reliable. Living reef organisms instantly bind to your structures,
-    patching up holes and repairing +15 Base Health.
+    patching up holes and repairing +5 Base Health.

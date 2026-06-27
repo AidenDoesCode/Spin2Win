@@ -1,5 +1,6 @@
 using UnityEngine;
 using UnityEngine.UI;
+using TMPro;
 
 // Self-building health bar for the base. Attach to any empty GameObject --
 // it finds (or doesn't need) a Canvas on its own, no manual UI setup needed.
@@ -34,6 +35,8 @@ public class BaseHealthBarUI : MonoBehaviour
     private BaseHealth baseHealth;
     private GameObject barObj; // ADDED
     private SpinFortShopManager shop; // ADDED
+    private TextMeshProUGUI numberLabel;
+    private bool shopPinned;
 
     private void Awake()
     {
@@ -43,6 +46,7 @@ public class BaseHealthBarUI : MonoBehaviour
     // ADDED: re-projects worldTarget's position onto the canvas every frame.
     private void Update()
     {
+        if (shopPinned) return; // pinned to a fixed screen corner while the shop is open
         if (worldTarget == null || canvas == null || borderRT == null) return;
 
         Camera cam = worldCamera != null ? worldCamera : Camera.main;
@@ -87,13 +91,45 @@ public class BaseHealthBarUI : MonoBehaviour
         }
     }
 
-    private void OnShopOpened() => barObj?.SetActive(false); // ADDED
-    private void OnShopClosed() => barObj?.SetActive(true); // ADDED
+    // CHANGED: the bar used to hide entirely during the buy phase because its
+    // default position overlapped the shop's title/cards. ShopUI's panel is
+    // centered and content-sized though (only its translucent backdrop is
+    // full-screen), so pinning the bar to a screen corner instead keeps it
+    // visible without overlapping anything, while SetAsLastSibling guarantees
+    // it draws on top of the shop's panel.
+    private void OnShopOpened()
+    {
+        shopPinned = true;
+        if (borderRT == null) return;
+
+        barObj.transform.SetAsLastSibling();
+        borderRT.anchorMin = borderRT.anchorMax = borderRT.pivot = new Vector2(0f, 1f);
+        borderRT.anchoredPosition = new Vector2(20f, -20f);
+    }
+
+    private void OnShopClosed()
+    {
+        shopPinned = false;
+        if (borderRT == null) return;
+
+        if (worldTarget != null)
+        {
+            borderRT.anchorMin = borderRT.anchorMax = borderRT.pivot = new Vector2(0.5f, 0.5f);
+        }
+        else
+        {
+            borderRT.anchorMin = anchorMin;
+            borderRT.anchorMax = anchorMax;
+            borderRT.pivot = pivot;
+            borderRT.anchoredPosition = anchoredPosition;
+        }
+    }
 
     private void OnHealthChanged(int current, int max)
     {
         float percent = max > 0 ? Mathf.Clamp01((float)current / max) : 0f;
         fillRT.anchorMax = new Vector2(percent, 1f);
+        if (numberLabel != null) numberLabel.text = $"{current} / {max}";
     }
 
     private void BuildBar()
@@ -143,5 +179,17 @@ public class BaseHealthBarUI : MonoBehaviour
         fillRT.offsetMax = Vector2.zero;
         Image fillImg = fillObj.AddComponent<Image>();
         fillImg.color = fillColor;
+
+        GameObject numberObj = new GameObject("Number");
+        numberObj.transform.SetParent(borderObj.transform, false);
+        RectTransform numberRT = numberObj.AddComponent<RectTransform>();
+        numberRT.anchorMin = Vector2.zero;
+        numberRT.anchorMax = Vector2.one;
+        numberRT.offsetMin = numberRT.offsetMax = Vector2.zero;
+        numberLabel = numberObj.AddComponent<TextMeshProUGUI>();
+        numberLabel.fontSize = 16;
+        numberLabel.alignment = TextAlignmentOptions.Center;
+        numberLabel.color = Color.white;
+        numberObj.AddComponent<PixelTextShadow>().enableShadow = true;
     }
 }

@@ -23,10 +23,14 @@ MonoBehaviour:
   fireRate: 3
   projectileSpeed: 20
   damage: 1
+  fireArcDegrees: 270
   isMelee: 0
   projectilePrefab: {fileID: 299504703514488645, guid: b0a3ac5e99814117aebaeb9dd759514f, type: 3}
   towerPrefab: {fileID: 3874816204346800925, guid: 681100dc363bc411b855364da738b3a2, type: 3}
-  visualScaleMultiplier: 1.5
+  screenShakeOnImpact: 0
+  shakeDuration: 0.1
+  shakeMagnitude: 0.05
+  visualScaleMultiplier: 1.2
   projectileScaleRatio: 5
   fireSound: {fileID: 8300000, guid: fd173c8b223cb49e9ab6fca8ba800163, type: 3}
   fireVolume: 0.5

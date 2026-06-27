@@ -113,7 +113,12 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::SoundwaveBulletBehavior
   Speed: 12
   Damage: 5
+  impactSound: {fileID: 0}
+  impactVolume: 1
   flightAnimation: {fileID: 7400000, guid: 39e4a62f1789f467084a575d6b020cf3, type: 2}
+  screenShakeOnImpact: 0
+  shakeDuration: 0.1
+  shakeMagnitude: 0.05
   maxPierceCount: 0
   lifetime: 2
 --- !u!212 &8682543742383556713

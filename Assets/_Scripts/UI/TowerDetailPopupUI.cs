@@ -30,6 +30,11 @@ public class TowerDetailPopupUI : MonoBehaviour
     private TextMeshProUGUI descriptionLabel;
     private TextMeshProUGUI statsLabel;
 
+    // True only when the currently-shown popup is for a placed Tower instance
+    // (as opposed to a shop/inventory card) -- so Hide() knows whether it
+    // also needs to clear the range ring it asked TowerPlacementManager to draw.
+    private bool showingPlacedTowerRange;
+
     private void Awake()
     {
         if (Instance == null) Instance = this;
@@ -50,6 +55,8 @@ public class TowerDetailPopupUI : MonoBehaviour
     {
         if (tower == null) return;
 
+        showingPlacedTowerRange = false;
+
         nameLabel.text = tower.towerName;
         descriptionLabel.text = string.IsNullOrWhiteSpace(tower.description)
             ? "No description available."
@@ -61,6 +68,33 @@ public class TowerDetailPopupUI : MonoBehaviour
 
         gameObject.SetActive(true);
         transform.SetAsLastSibling();
+        RoundManager.Instance?.SetTimerPaused(true);
+    }
+
+    // Placed-tower overload -- shows the tower's current (instance-bonus-
+    // adjusted) stats and draws its actual range ring in the world via
+    // TowerPlacementManager, reusing the same ring/label it uses for the
+    // drag-placement preview.
+    public void Show(Tower tower)
+    {
+        if (tower == null || tower.data == null) return;
+
+        showingPlacedTowerRange = true;
+
+        nameLabel.text = tower.data.towerName;
+        descriptionLabel.text = string.IsNullOrWhiteSpace(tower.data.description)
+            ? "No description available."
+            : tower.data.description;
+        statsLabel.text = BuildStatsText(tower);
+
+        iconImage.sprite = tower.data.icon;
+        iconImage.enabled = tower.data.icon != null;
+
+        gameObject.SetActive(true);
+        transform.SetAsLastSibling();
+        RoundManager.Instance?.SetTimerPaused(true);
+
+        TowerPlacementManager.Instance?.ShowRangeRingAt(tower.transform.position, tower.EffectiveRange);
     }
 
     // Upgrade-card overload -- same popup, just a different stat block since
@@ -69,6 +103,8 @@ public class TowerDetailPopupUI : MonoBehaviour
     public void Show(ShopCardSO card)
     {
         if (card == null || card.rewardType == SpinFortRewardType.Tower) return;
+
+        showingPlacedTowerRange = false;
 
         nameLabel.text = card.label;
         descriptionLabel.text = string.IsNullOrWhiteSpace(card.description)
@@ -81,18 +117,29 @@ public class TowerDetailPopupUI : MonoBehaviour
 
         gameObject.SetActive(true);
         transform.SetAsLastSibling();
+        RoundManager.Instance?.SetTimerPaused(true);
     }
 
-    public void Hide() => gameObject.SetActive(false);
+    public void Hide()
+    {
+        gameObject.SetActive(false);
+        RoundManager.Instance?.SetTimerPaused(false);
 
-    private string BuildStatsText(TowerSO tower)
+        if (showingPlacedTowerRange)
+        {
+            TowerPlacementManager.Instance?.HideRangeRing();
+            showingPlacedTowerRange = false;
+        }
+    }
+
+    public static string BuildStatsText(TowerSO tower)
     {
         string attackLine = tower.isMelee
             ? "Attack: Melee"
             : $"Projectile Speed: {tower.projectileSpeed:0.##}";
 
         return
-            $"Cost: {tower.cost}\n" +
+            $"Cost: ${tower.cost}\n" +
             $"Range: {tower.range:0.##}\n" +
             $"Fire Rate: {tower.fireRate:0.##}/s\n" +
             $"Damage: {tower.damage}\n" +
@@ -100,7 +147,35 @@ public class TowerDetailPopupUI : MonoBehaviour
             $"Rotation Speed: {tower.rotationSpeed:0.##}°/s";
     }
 
-    private string BuildStatsText(ShopCardSO card)
+    // Placed-instance variant -- shows the tower's current (instance-bonus-
+    // adjusted) Effective* values, noting the unbuffed base value alongside
+    // any stat a consumable upgrade card has pushed away from it.
+    public static string BuildStatsText(Tower tower)
+    {
+        TowerSO data = tower.data;
+
+        string rangeLine = $"Range: {tower.EffectiveRange:0.##}";
+        if (!Mathf.Approximately(tower.EffectiveRange, data.range)) rangeLine += $" (base {data.range:0.##})";
+
+        string fireRateLine = $"Fire Rate: {tower.EffectiveFireRate:0.##}/s";
+        if (!Mathf.Approximately(tower.EffectiveFireRate, data.fireRate)) fireRateLine += $" (base {data.fireRate:0.##})";
+
+        string damageLine = $"Damage: {tower.EffectiveDamage}";
+        if (tower.EffectiveDamage != data.damage) damageLine += $" (base {data.damage})";
+
+        string attackLine = data.isMelee
+            ? "Attack: Melee"
+            : $"Projectile Speed: {data.projectileSpeed:0.##}";
+
+        return
+            $"{rangeLine}\n" +
+            $"{fireRateLine}\n" +
+            $"{damageLine}\n" +
+            $"{attackLine}\n" +
+            $"Rotation Speed: {data.rotationSpeed:0.##}°/s";
+    }
+
+    public static string BuildStatsText(ShopCardSO card)
     {
         string effectLine;
         switch (card.rewardType)
@@ -152,7 +227,7 @@ public class TowerDetailPopupUI : MonoBehaviour
                 break;
         }
 
-        return $"Cost: {card.cost}\nRarity: {card.rarity}\n{effectLine}";
+        return $"Cost: ${card.cost}\nRarity: {card.rarity}\n{effectLine}";
     }
 
     private void BuildBackdrop()

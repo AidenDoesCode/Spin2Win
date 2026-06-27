@@ -21,6 +21,11 @@ public class GameModifiers : MonoBehaviour
         else Destroy(gameObject);
     }
 
+    private void OnDestroy()
+    {
+        if (Instance == this) Instance = null;
+    }
+
     public void AddGoldPerRound(int amount) => goldPerRoundBonus += amount;
 
     public void EnableExplodeOnSell(float damage, float stunDuration)

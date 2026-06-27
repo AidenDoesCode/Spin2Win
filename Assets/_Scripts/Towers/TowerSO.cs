@@ -19,6 +19,8 @@ public class TowerSO : ScriptableObject
     [Min(0f)] public float fireRate = 1f;
     [Min(0f)] public float projectileSpeed = 7f;
     [Min(1)] public int damage = 1;
+    [Tooltip("Full width (in degrees) of the forgiving firing cone -- the tower can fire at anything within +/- half this angle of dead-on, instead of requiring pixel-perfect alignment. Wider for melee/splash towers, tighter for precision towers like the Sniper.")]
+    [Min(0f)] public float fireArcDegrees = 10f;
 
     [Header("Attack Type")]
     [Tooltip("If true, this tower hits its target directly (no projectile spawned) -- for melee towers like Salmon Slapper. projectilePrefab/projectileSpeed are ignored.")]
