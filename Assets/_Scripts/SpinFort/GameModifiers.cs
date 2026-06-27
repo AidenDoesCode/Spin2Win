@@ -1,8 +1,5 @@
 using UnityEngine;
 
-// Holds permanent, shop-purchased modifiers that apply globally -- across all
-// towers and the economy -- as opposed to the temporary per-run buffs on
-// PlayerController. Singleton, mirrors ScoreManager/RoundManager's pattern.
 public class GameModifiers : MonoBehaviour
 {
     public static GameModifiers Instance { get; private set; }
@@ -14,6 +11,11 @@ public class GameModifiers : MonoBehaviour
     public bool explodeOnSellEnabled = false;
     public float explodeOnSellDamage = 0f;
     public float explodeOnSellStunDuration = 0f;
+
+    [Header("New Custom Card Buffs")]
+    public float luckMultiplier = 1.0f; // Per-rarity-tier weight multiplier when rolling shop offers, starts at 1.0x (no bias)
+    public float towerRotationSpeedBonus = 0f;
+    public float globalDamageMultiplier = 1.0f; // Starts at 1.0x (normal damage)
 
     private void Awake()
     {
@@ -28,6 +30,11 @@ public class GameModifiers : MonoBehaviour
 
     public void AddGoldPerRound(int amount) => goldPerRoundBonus += amount;
 
+    // --- NEW MODIFIER METHODS ---
+    public void AddLuck(float multiplier) => luckMultiplier *= multiplier;
+    public void AddTowerRotationSpeed(float amount) => towerRotationSpeedBonus += amount;
+    public void MultiplyGlobalDamage(float multiplier) => globalDamageMultiplier *= multiplier;
+
     public void EnableExplodeOnSell(float damage, float stunDuration)
     {
         explodeOnSellEnabled = true;
@@ -35,8 +42,6 @@ public class GameModifiers : MonoBehaviour
         explodeOnSellStunDuration = stunDuration;
     }
 
-    // Riptide Counter-Current's payoff -- called wherever a tower card is
-    // sold/recycled. Hits and stuns every enemy currently on the map.
     public void TriggerSellExplosionIfEnabled()
     {
         if (!explodeOnSellEnabled) return;

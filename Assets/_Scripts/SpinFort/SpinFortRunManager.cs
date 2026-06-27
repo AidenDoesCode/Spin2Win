@@ -56,7 +56,7 @@ public class SpinFortRunManager : MonoBehaviour
         Debug.Log($"SpinFortRunManager: Wheel landed on {result.label} ({result.rewardType}).");
     }
 
-    private void ApplyResult(SpinFortWheelDefinitionSO.WheelSegment result)
+private void ApplyResult(SpinFortWheelDefinitionSO.WheelSegment result)
     {
         switch (result.rewardType)
         {
@@ -81,6 +81,20 @@ public class SpinFortRunManager : MonoBehaviour
             case SpinFortRewardType.Tower:
                 if (result.towerReward != null)
                     PlayerTowerInventory.Instance?.AddTower(result.towerReward);
+                break;
+                
+            // --- NEW REWARD HANDLERS ---
+            case SpinFortRewardType.MaxTowerHealthBuff:
+                BaseHealth.Instance?.IncreaseMaxHealth(result.intValue);
+                break;
+            case SpinFortRewardType.LuckBuff:
+                GameModifiers.Instance?.AddLuck(result.floatValue);
+                break;
+            case SpinFortRewardType.TowerRotationSpeedBuff:
+                GameModifiers.Instance?.AddTowerRotationSpeed(result.floatValue);
+                break;
+            case SpinFortRewardType.GlobalTowerDamageMultiplier:
+                GameModifiers.Instance?.MultiplyGlobalDamage(result.floatValue);
                 break;
         }
     }

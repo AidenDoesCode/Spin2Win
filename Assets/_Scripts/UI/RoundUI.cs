@@ -15,60 +15,79 @@ public class RoundUI : MonoBehaviour
         text = GetComponent<TMP_Text>();
     }
 
-    // Change Start to OnEnable in RoundUI to ensure subscriptions happen early,
-// but handle the initial UI refresh *after* the manager initializes.
-void Start()
-{
-    if (roundManager == null)
-        roundManager = RoundManager.Instance;
-
-    if (roundManager != null)
+    void OnEnable()
     {
-        roundManager.RoundUpdated += OnRoundUpdated;
-        
-        // Use Invoke to wait one frame, letting RoundManager reset its numbers first
-        Invoke(nameof(RefreshUI), 0.01f); 
+        // Subscribing in OnEnable ensures this script hooks into the event 
+        // BEFORE RoundManager fires its initial setup event in Start().
+        if (roundManager == null)
+            roundManager = RoundManager.Instance;
+
+        if (roundManager != null)
+        {
+            roundManager.RoundUpdated += OnRoundUpdated;
+        }
     }
-}
 
-void RefreshUI()
-{
-    if (roundManager != null)
+    void Start()
     {
-        text.text = FormatText(roundManager.CurrentRound, roundManager.EnemiesRemaining);
+        // Double check instance assignment if it wasn't ready during OnEnable
+        if (roundManager == null)
+        {
+            roundManager = RoundManager.Instance;
+            if (roundManager != null)
+            {
+                roundManager.RoundUpdated -= OnRoundUpdated; // Avoid double subscription
+                roundManager.RoundUpdated += OnRoundUpdated;
+            }
+        }
+
+        // Force a direct check on frame one to catch any missed initial states
+        RefreshUI();
     }
-}
 
-    void OnDestroy()
+    void OnDisable()
     {
-        // CRITICAL FIX: Explicitly unsubscribe using the underlying system object 
-        // to bypass Unity's custom null check during scene destruction
+        // Safe unsubscription during scene destruction or disabling
         if (!ReferenceEquals(roundManager, null))
         {
             roundManager.RoundUpdated -= OnRoundUpdated;
         }
     }
 
-    private void OnRoundUpdated(int currentRound, int enemiesRemaining)
-{
-    text.text = FormatText(currentRound, enemiesRemaining);
-
-    // Tell the aligner on our parent (or object) to recalculate immediately
-    HUDAligner aligner = GetComponentInParent<HUDAligner>();
-    if (aligner != null)
+    void RefreshUI()
     {
-        aligner.AlignOnce();
+        if (roundManager != null)
+        {
+            text.text = FormatText(roundManager.CurrentRound, roundManager.EnemiesRemaining);
+            ForceAlignerUpdate();
+        }
     }
-}
+
+    private void OnRoundUpdated(int currentRound, int enemiesRemaining)
+    {
+        text.text = FormatText(currentRound, enemiesRemaining);
+        ForceAlignerUpdate();
+    }
+
+    private void ForceAlignerUpdate()
+    {
+        HUDAligner aligner = GetComponentInParent<HUDAligner>();
+        if (aligner != null)
+        {
+            aligner.AlignOnce();
+        }
+    }
 
     private string FormatText(int round, int remaining)
-{
-    int pd = Mathf.Max(1, paddingDigits);
-    
-    // Change '0' back to ' ' (spaces) so it pads cleanly without extra zeros
-    string r = Mathf.Max(1, round).ToString().PadLeft(pd, ' ');
-    string e = remaining.ToString().PadLeft(pd, ' ');
-    
-    return $"Round {r}  -  Enemies: {e}";
-}
+    {
+        int pd = Mathf.Max(1, paddingDigits);
+        
+        // If round is 0 (pre-round state), display it as 1 so the player sees "Round 1" instantly on restart
+        int displayRound = Mathf.Max(1, round);
+        
+        string r = displayRound.ToString().PadLeft(pd, ' ');
+        string e = remaining.ToString().PadLeft(pd, ' ');
+        
+        return $"Round {r}  -  Enemies: {e}";
+    }
 }

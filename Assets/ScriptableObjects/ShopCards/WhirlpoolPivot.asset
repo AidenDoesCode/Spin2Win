@@ -10,17 +10,17 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 9721b95c021e43cab32ddc8359c7831e, type: 3}
-  m_Name: PufferHuffer
+  m_Name: WhirlpoolPivot
   m_EditorClassIdentifier: Assembly-CSharp::ShopCardSO
-  label: 'Puffer Huffer '
-  rarity: 1
-  weight: 18
-  cost: 55
-  rewardType: 6
-  intValue: 0
-  floatValue: 0
+  label: Whirpool Pivot
+  rarity: 0
+  weight: 5
+  cost: 80
+  rewardType: 17
+  intValue: 1
+  floatValue: 45
   duration: 0
-  towerReward: {fileID: 11400000, guid: 96a06bb3685f34b3a8584eaf6a88d42b, type: 2}
-  icon: {fileID: 0}
-  description: Inwardly panicking pufferfish that aggressively hurls inflated, spiky
-    clones of itself onto the path.
+  towerReward: {fileID: 0}
+  icon: {fileID: -3982105719774407045, guid: a286fe6cd10fd4dcd8da138de6149905, type: 3}
+  description: "Lubricates tracking gears, permanently allowing defenses to rotate
+    45\xB0 faster per second."

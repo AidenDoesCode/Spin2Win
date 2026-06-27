@@ -39,8 +39,12 @@ public class HUDAligner : MonoBehaviour
             var t = targets[i];
             if (t == null) continue;
 
-            // ensure right alignment so text lines up on the right edge
+            // Ensure right alignment so text lines up on the right edge
             t.alignment = TextAlignmentOptions.TopRight;
+
+            // CRITICAL FIX: Forces TextMeshPro to fully process its internal mesh arrays 
+            // with the brand new string data before we ask for preferred sizing.
+            t.ForceMeshUpdate();
 
             // Ask TMP for preferred width for the current text
             Vector2 pref = t.GetPreferredValues(t.text, 10000f, t.rectTransform.rect.height);
@@ -57,7 +61,8 @@ public class HUDAligner : MonoBehaviour
             var le = t.GetComponent<LayoutElement>();
             if (le == null) le = t.gameObject.AddComponent<LayoutElement>();
             le.preferredWidth = maxWidth;
-            // let height size naturally
+            
+            // Let height size naturally
             le.preferredHeight = -1f;
         }
     }

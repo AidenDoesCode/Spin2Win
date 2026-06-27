@@ -42,12 +42,19 @@ public class Tower : MonoBehaviour
     private int instanceDamageBonus;
     private float instanceAttackSpeedBonus; // fractional, e.g. 0.1 = +10%
     private float instanceRangeBonus;       // fractional, e.g. 0.1 = +10%
+    private float instanceDamageMultiplier = 1f; // e.g. 1.2 = +20%, only for this tower
 
-    public int EffectiveDamage => (data != null ? data.damage : 0) + instanceDamageBonus;
+    public int EffectiveDamage => Mathf.RoundToInt(
+        ((data != null ? data.damage : 0) + instanceDamageBonus)
+        * instanceDamageMultiplier
+        * (GameModifiers.Instance != null ? GameModifiers.Instance.globalDamageMultiplier : 1f));
     public float EffectiveRange => data != null ? data.range * (1f + instanceRangeBonus) : 0f;
     public float EffectiveFireRate => data != null ? data.fireRate * (1f + instanceAttackSpeedBonus) : 0f;
+    public float EffectiveRotationSpeed => (data != null ? data.rotationSpeed : 0f)
+        + (GameModifiers.Instance != null ? GameModifiers.Instance.towerRotationSpeedBonus : 0f);
 
     public void AddInstanceDamageBonus(int amount) => instanceDamageBonus += amount;
+    public void AddInstanceDamageMultiplier(float multiplier) => instanceDamageMultiplier *= multiplier;
     public void AddInstanceAttackSpeedBonus(float fractionalIncrease) => instanceAttackSpeedBonus += fractionalIncrease;
     public void AddInstanceRangeBonus(float fractionalIncrease) => instanceRangeBonus += fractionalIncrease;
 
@@ -59,7 +66,7 @@ public class Tower : MonoBehaviour
         {
             int refund = Mathf.RoundToInt(data.cost * refundPercent);
             ScoreManager.Instance?.AddScore(refund);
-            FloatingText.Spawn(transform.position, $"+{refund}g", new Color(1f, 0.8431f, 0f));
+            FloatingText.Spawn(transform.position, $"+${refund}", new Color(1f, 0.8431f, 0f));
         }
 
         GameModifiers.Instance?.TriggerSellExplosionIfEnabled();
@@ -70,6 +77,30 @@ public class Tower : MonoBehaviour
     private void Awake()
     {
         SpriteRenderer sr = GetComponentInChildren<SpriteRenderer>();
+
+        // Every Tower prefab puts its SpriteRenderer on the same GameObject as
+        // this script and its Collider2D (no separate visual child). Rotating
+        // and mirroring that GameObject for aiming (ApplyVisualRotation) would
+        // also rotate/flip the Collider2D itself, so the clickable/droppable
+        // area drifts away from the visible sprite as soon as the tower aims
+        // anywhere other than its placement angle -- exactly why towers
+        // become unclickable or refuse upgrade cards once idle at some
+        // rotated/mirrored angle. Move the sprite onto a dedicated child so
+        // only the visual rotates, leaving the root (and its collider) fixed.
+        if (sr != null && sr.transform == transform)
+        {
+            sr = MoveSpriteRendererToVisualChild(sr);
+
+            // firePoint used to ride along with the root's rotation while
+            // aiming; now that only the new visual child rotates, firePoint
+            // needs to move there too or it'll stop swinging to track targets
+            // (false = keep its existing local offset, which is numerically
+            // identical relative to the new parent since it sits at the
+            // root's local origin).
+            if (firePoint != null)
+                firePoint.SetParent(sr.transform, false);
+        }
+
         visualTransform = sr != null ? sr.transform : transform;
         currentAngle = visualTransform.eulerAngles.z;
         baseVisualScale = visualTransform.localScale;
@@ -79,6 +110,31 @@ public class Tower : MonoBehaviour
         audioSource.playOnAwake = false;
 
         BuildWindupBar();
+    }
+
+    // Re-homes a root-level SpriteRenderer onto a fresh "Visual" child with
+    // the same look (sprite/color/flip/sorting/material), then removes the
+    // original so the root's Collider2D is the only thing left unrotated.
+    private SpriteRenderer MoveSpriteRendererToVisualChild(SpriteRenderer rootRenderer)
+    {
+        GameObject visualObj = new GameObject("Visual");
+        visualObj.transform.SetParent(transform, false);
+
+        SpriteRenderer childRenderer = visualObj.AddComponent<SpriteRenderer>();
+        childRenderer.sprite = rootRenderer.sprite;
+        childRenderer.color = rootRenderer.color;
+        childRenderer.flipX = rootRenderer.flipX;
+        childRenderer.flipY = rootRenderer.flipY;
+        childRenderer.sharedMaterial = rootRenderer.sharedMaterial;
+        childRenderer.sortingLayerID = rootRenderer.sortingLayerID;
+        childRenderer.sortingOrder = rootRenderer.sortingOrder;
+        childRenderer.drawMode = rootRenderer.drawMode;
+        childRenderer.size = rootRenderer.size;
+        childRenderer.tileMode = rootRenderer.tileMode;
+        childRenderer.maskInteraction = rootRenderer.maskInteraction;
+
+        Destroy(rootRenderer);
+        return childRenderer;
     }
 
     private void Start()
@@ -305,7 +361,7 @@ public class Tower : MonoBehaviour
         float desiredWorldAngle = Mathf.Atan2(dir.y, dir.x) * Mathf.Rad2Deg;
         float targetRotation = desiredWorldAngle - firePointLocalAngle;
 
-        currentAngle = Mathf.MoveTowardsAngle(currentAngle, targetRotation, data.rotationSpeed * Time.deltaTime);
+        currentAngle = Mathf.MoveTowardsAngle(currentAngle, targetRotation, EffectiveRotationSpeed * Time.deltaTime);
         ApplyVisualRotation(currentAngle);
 
         // The aiming-accuracy check below is purely logical (based on the

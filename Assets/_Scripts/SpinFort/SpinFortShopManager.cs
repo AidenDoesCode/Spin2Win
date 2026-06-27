@@ -220,18 +220,24 @@ public class SpinFortShopManager : MonoBehaviour
         var pool = new List<ShopCardSO>(possibleOffers);
         pool.RemoveAll(o => o == null || o.weight <= 0f);
 
+        // Fortune's Current's payoff -- luckMultiplier compounds per rarity
+        // tier (Common untouched, Legendary gets it applied four times over),
+        // skewing rolls toward rarer cards the same way other cards' floatValue
+        // doubles as a "Xx" multiplier (see BrineInfusion/TowerDamageMultiplier).
+        float luckMultiplier = GameModifiers.Instance != null ? GameModifiers.Instance.luckMultiplier : 1f;
+
         int target = Mathf.Min(count, pool.Count);
         for (int i = 0; i < target; i++)
         {
             float totalWeight = 0f;
-            foreach (var o in pool) totalWeight += o.weight;
+            foreach (var o in pool) totalWeight += EffectiveRollWeight(o, luckMultiplier);
 
             float roll = UnityEngine.Random.value * totalWeight;
             float cursor = 0f;
             ShopCardSO picked = pool[pool.Count - 1];
             foreach (var o in pool)
             {
-                cursor += o.weight;
+                cursor += EffectiveRollWeight(o, luckMultiplier);
                 if (roll <= cursor) { picked = o; break; }
             }
 
@@ -241,6 +247,9 @@ public class SpinFortShopManager : MonoBehaviour
 
         return result;
     }
+
+    private static float EffectiveRollWeight(ShopCardSO offer, float luckMultiplier) =>
+        offer.weight * Mathf.Pow(luckMultiplier, (int)offer.rarity);
 
     // Buying a card no longer applies its effect on the spot -- it becomes a
     // consumable sitting in the player's inventory until they drag it onto a
@@ -278,7 +287,8 @@ public class SpinFortShopManager : MonoBehaviour
     public static bool IsTowerTargetedUpgrade(SpinFortRewardType type) =>
         type == SpinFortRewardType.GlobalAttackSpeed
         || type == SpinFortRewardType.GlobalTowerRange
-        || type == SpinFortRewardType.GlobalTowerDamage;
+        || type == SpinFortRewardType.GlobalTowerDamage
+        || type == SpinFortRewardType.TowerDamageMultiplier;
 
     // Called from the upgrade inventory UI when a card is dragged onto a
     // specific placed tower. Returns false (and leaves the card in inventory)
@@ -297,6 +307,9 @@ public class SpinFortShopManager : MonoBehaviour
                 break;
             case SpinFortRewardType.GlobalTowerDamage:
                 targetTower.AddInstanceDamageBonus(offer.intValue);
+                break;
+            case SpinFortRewardType.TowerDamageMultiplier:
+                targetTower.AddInstanceDamageMultiplier(offer.floatValue);
                 break;
             default:
                 return false;
@@ -347,6 +360,18 @@ public class SpinFortShopManager : MonoBehaviour
                 break;
             case SpinFortRewardType.TowersExplodeOnDeath:
                 GameModifiers.Instance?.EnableExplodeOnSell(offer.floatValue, offer.duration);
+                break;
+            case SpinFortRewardType.MaxTowerHealthBuff:
+                BaseHealth.Instance?.IncreaseMaxHealth(offer.intValue);
+                break;
+            case SpinFortRewardType.LuckBuff:
+                GameModifiers.Instance?.AddLuck(offer.floatValue);
+                break;
+            case SpinFortRewardType.TowerRotationSpeedBuff:
+                GameModifiers.Instance?.AddTowerRotationSpeed(offer.floatValue);
+                break;
+            case SpinFortRewardType.GlobalTowerDamageMultiplier:
+                GameModifiers.Instance?.MultiplyGlobalDamage(offer.floatValue);
                 break;
             default:
                 return false;

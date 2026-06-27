@@ -2,6 +2,7 @@ using UnityEngine;
 using UnityEngine.InputSystem;
 using UnityEngine.EventSystems;
 using UnityEngine.Tilemaps;
+using UnityEngine.UI;
 using TMPro;
 
 public class TowerPlacementManager : MonoBehaviour
@@ -47,6 +48,10 @@ public class TowerPlacementManager : MonoBehaviour
     private SpriteRenderer rangeRenderer;
     private TextMeshPro rangeLabel;
 
+    private GameObject sellConfirmObj;
+    private TextMeshProUGUI sellConfirmMessage;
+    private Tower pendingSellTower;
+
     private void Awake()
     {
         if (Instance == null) Instance = this;
@@ -69,6 +74,8 @@ public class TowerPlacementManager : MonoBehaviour
             placementCamera = Camera.main;
         if (grid == null)
             grid = FindAnyObjectByType<Grid>();
+
+        BuildSellConfirmUI();
     }
 
     private void Update()
@@ -77,9 +84,10 @@ public class TowerPlacementManager : MonoBehaviour
             TrySellTowerAtMouse();
     }
 
-    // Right-click sells whatever placed tower is under the cursor, refunding
-    // part of its buy cost. Same phase lock as placement -- selling mid-wave
-    // would let players dodge a hit they already paid to be ready for.
+    // Right-click brings up a Sell/Cancel confirmation for whatever placed
+    // tower is under the cursor instead of selling it immediately -- same
+    // phase lock as placement, since selling mid-wave would let players dodge
+    // a hit they already paid to be ready for.
     public bool TrySellTowerAtMouse()
     {
         if (EventSystem.current != null && EventSystem.current.IsPointerOverGameObject())
@@ -96,8 +104,37 @@ public class TowerPlacementManager : MonoBehaviour
         Tower tower = hit.GetComponent<Tower>();
         if (tower == null) return false;
 
-        tower.Sell(placedTowerRefundPercent);
+        ShowSellConfirm(tower);
         return true;
+    }
+
+    private void ShowSellConfirm(Tower tower)
+    {
+        if (sellConfirmObj == null) return;
+
+        pendingSellTower = tower;
+        int refund = tower.data != null ? Mathf.RoundToInt(tower.data.cost * placedTowerRefundPercent) : 0;
+        string towerName = tower.data != null ? tower.data.towerName : "this tower";
+        sellConfirmMessage.text = $"Sell {towerName} for ${refund}?";
+
+        sellConfirmObj.SetActive(true);
+        sellConfirmObj.transform.SetAsLastSibling();
+        RoundManager.Instance?.SetTimerPaused(true);
+    }
+
+    private void OnConfirmSellClicked()
+    {
+        pendingSellTower?.Sell(placedTowerRefundPercent);
+        HideSellConfirm();
+    }
+
+    private void OnCancelSellClicked() => HideSellConfirm();
+
+    private void HideSellConfirm()
+    {
+        pendingSellTower = null;
+        if (sellConfirmObj != null) sellConfirmObj.SetActive(false);
+        RoundManager.Instance?.SetTimerPaused(false);
     }
 
     // Drag-and-drop placement: dragging a card from the inventory panel onto
@@ -255,6 +292,67 @@ public class TowerPlacementManager : MonoBehaviour
         rangeLabel.color = Color.white;
         rangeLabel.sortingOrder = previewSortingOrder;
         rangeLabelObj.SetActive(false);
+    }
+
+    // Small modal Yes/Cancel confirmation shown by ShowSellConfirm before a
+    // right-clicked tower is actually sold. Self-attaches to whatever Canvas
+    // is in the scene, same lookup pattern BaseHealthBarUI uses.
+    private void BuildSellConfirmUI()
+    {
+        Canvas canvas = FindAnyObjectByType<Canvas>();
+        if (canvas == null) return;
+
+        sellConfirmObj = new GameObject("SellConfirmPanel");
+        sellConfirmObj.transform.SetParent(canvas.transform, false);
+        RectTransform panelRT = sellConfirmObj.AddComponent<RectTransform>();
+        panelRT.anchorMin = panelRT.anchorMax = panelRT.pivot = new Vector2(0.5f, 0.5f);
+        panelRT.sizeDelta = new Vector2(380f, 180f);
+        Image panelImg = sellConfirmObj.AddComponent<Image>();
+        panelImg.color = new Color(0.2f, 0.031f, 0.031f, 0.97f);
+
+        GameObject messageObj = new GameObject("Message");
+        messageObj.transform.SetParent(sellConfirmObj.transform, false);
+        RectTransform messageRT = messageObj.AddComponent<RectTransform>();
+        messageRT.anchorMin = new Vector2(0f, 1f);
+        messageRT.anchorMax = new Vector2(1f, 1f);
+        messageRT.pivot = new Vector2(0.5f, 1f);
+        messageRT.anchoredPosition = new Vector2(0f, -20f);
+        messageRT.sizeDelta = new Vector2(-40f, 80f);
+        sellConfirmMessage = messageObj.AddComponent<TextMeshProUGUI>();
+        sellConfirmMessage.fontSize = 22;
+        sellConfirmMessage.alignment = TextAlignmentOptions.Center;
+        sellConfirmMessage.color = Color.white;
+
+        BuildSellConfirmButton("SellButton", "Sell", new Vector2(-95f, 30f), new Color(0.8157f, 0f, 0f, 1f), OnConfirmSellClicked);
+        BuildSellConfirmButton("CancelButton", "Cancel", new Vector2(95f, 30f), new Color(1f, 0.8431f, 0f, 1f), OnCancelSellClicked);
+
+        sellConfirmObj.SetActive(false);
+    }
+
+    private void BuildSellConfirmButton(string name, string text, Vector2 anchoredPosition, Color color, UnityEngine.Events.UnityAction onClick)
+    {
+        GameObject buttonObj = new GameObject(name);
+        buttonObj.transform.SetParent(sellConfirmObj.transform, false);
+        RectTransform buttonRT = buttonObj.AddComponent<RectTransform>();
+        buttonRT.anchorMin = buttonRT.anchorMax = buttonRT.pivot = new Vector2(0.5f, 0f);
+        buttonRT.anchoredPosition = anchoredPosition;
+        buttonRT.sizeDelta = new Vector2(160f, 56f);
+        Image buttonImg = buttonObj.AddComponent<Image>();
+        buttonImg.color = color;
+        Button button = buttonObj.AddComponent<Button>();
+        button.onClick.AddListener(onClick);
+
+        GameObject labelObj = new GameObject("Label");
+        labelObj.transform.SetParent(buttonObj.transform, false);
+        RectTransform labelRT = labelObj.AddComponent<RectTransform>();
+        labelRT.anchorMin = Vector2.zero;
+        labelRT.anchorMax = Vector2.one;
+        labelRT.offsetMin = labelRT.offsetMax = Vector2.zero;
+        var label = labelObj.AddComponent<TextMeshProUGUI>();
+        label.text = text;
+        label.fontSize = 22;
+        label.alignment = TextAlignmentOptions.Center;
+        label.color = Color.black;
     }
 
     private static Sprite CreateSquareSprite()

@@ -543,7 +543,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_text: 'Score: 0'
+  m_text: 'Score: $0'
   m_isRightToLeft: 0
   m_fontAsset: {fileID: 11400000, guid: 2df26853118894f799643e921f77ddc5, type: 2}
   m_sharedMaterial: {fileID: 584156882524438284, guid: 2df26853118894f799643e921f77ddc5, type: 2}
@@ -852,6 +852,10 @@ MonoBehaviour:
   - {fileID: 11400000, guid: 0c2a7053a7524e6187b692a63ca25410, type: 2}
   - {fileID: 11400000, guid: 919e6f84269b467dbe519764421ca484, type: 2}
   - {fileID: 11400000, guid: b7a9c50036984e3bbeab3f0715639b87, type: 2}
+  - {fileID: 11400000, guid: 0cdd0f09b51984cfc981fa0bfb75c31e, type: 2}
+  - {fileID: 11400000, guid: 52410e554c274448aa4e98861c77d29d, type: 2}
+  - {fileID: 11400000, guid: 9b6519b2568244dcd86b95e4fb3760f3, type: 2}
+  - {fileID: 11400000, guid: 886cba5c9a456431fa7347f4f40f126e, type: 2}
   numOffersPerRound: 3
   baseRerollCost: 10
   rerollCostIncrement: 10
@@ -1369,7 +1373,7 @@ MonoBehaviour:
   _SortingLayerID: 0
   _SortingOrder: 0
   m_hasFontAssetChanged: 0
-  m_renderer: {fileID: 990052064}
+  m_renderer: {fileID: 506624802}
   m_maskType: 0
 --- !u!23 &506624802
 MeshRenderer:
@@ -28872,6 +28876,8 @@ MonoBehaviour:
   damageMultiplierPerRound: 0.1
   spawner: {fileID: 77459598}
   autoStartEnemyPhaseAfterSpawn: 1
+  bossRoundInterval: 10
+  bossEnemy: {fileID: 11400000, guid: 250978800f8a5044fa93c653ad782525, type: 2}
   roundStartSound: {fileID: 8300000, guid: 99d61256bf2e34a73860f53b84ea3476, type: 3}
   roundStartVolume: 1
 --- !u!4 &1690765956
@@ -29638,7 +29644,7 @@ MonoBehaviour:
   _SortingLayerID: 0
   _SortingOrder: 0
   m_hasFontAssetChanged: 0
-  m_renderer: {fileID: 990052064}
+  m_renderer: {fileID: 1934599115}
   m_maskType: 0
 --- !u!23 &1934599115
 MeshRenderer:
@@ -29689,120 +29695,6 @@ MeshRenderer:
   m_SortingOrder: 0
   m_MaskInteraction: 0
   m_AdditionalVertexStreams: {fileID: 0}
---- !u!1 &2001308774
-GameObject:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  serializedVersion: 6
-  m_Component:
-  - component: {fileID: 2001308777}
-  - component: {fileID: 2001308776}
-  - component: {fileID: 2001308775}
-  m_Layer: 0
-  m_Name: spin2win_tile_water_32x32_16f_0
-  m_TagString: Untagged
-  m_Icon: {fileID: 0}
-  m_NavMeshLayer: 0
-  m_StaticEditorFlags: 0
-  m_IsActive: 1
---- !u!95 &2001308775
-Animator:
-  serializedVersion: 7
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 2001308774}
-  m_Enabled: 1
-  m_Avatar: {fileID: 0}
-  m_Controller: {fileID: 9100000, guid: 3997334f051db43d68e5e4afd2c54e83, type: 2}
-  m_CullingMode: 0
-  m_UpdateMode: 0
-  m_ApplyRootMotion: 0
-  m_LinearVelocityBlending: 0
-  m_StabilizeFeet: 0
-  m_AnimatePhysics: 0
-  m_WarningMessage: 
-  m_HasTransformHierarchy: 1
-  m_AllowConstantClipSamplingOptimization: 1
-  m_KeepAnimatorStateOnDisable: 0
-  m_WriteDefaultValuesOnDisable: 0
---- !u!212 &2001308776
-SpriteRenderer:
-  serializedVersion: 2
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 2001308774}
-  m_Enabled: 1
-  m_CastShadows: 0
-  m_ReceiveShadows: 0
-  m_DynamicOccludee: 1
-  m_StaticShadowCaster: 0
-  m_MotionVectors: 1
-  m_LightProbeUsage: 1
-  m_ReflectionProbeUsage: 1
-  m_RayTracingMode: 0
-  m_RayTraceProcedural: 0
-  m_RayTracingAccelStructBuildFlagsOverride: 0
-  m_RayTracingAccelStructBuildFlags: 1
-  m_SmallMeshCulling: 1
-  m_ForceMeshLod: -1
-  m_MeshLodSelectionBias: 0
-  m_RenderingLayerMask: 1
-  m_RendererPriority: 0
-  m_Materials:
-  - {fileID: 2100000, guid: a97c105638bdf8b4a8650670310a4cd3, type: 2}
-  m_StaticBatchInfo:
-    firstSubMesh: 0
-    subMeshCount: 0
-  m_StaticBatchRoot: {fileID: 0}
-  m_ProbeAnchor: {fileID: 0}
-  m_LightProbeVolumeOverride: {fileID: 0}
-  m_ScaleInLightmap: 1
-  m_ReceiveGI: 1
-  m_PreserveUVs: 0
-  m_IgnoreNormalsForChartDetection: 0
-  m_ImportantGI: 0
-  m_StitchLightmapSeams: 1
-  m_SelectedEditorRenderState: 0
-  m_MinimumChartSize: 4
-  m_AutoUVMaxDistance: 0.5
-  m_AutoUVMaxAngle: 89
-  m_LightmapParameters: {fileID: 0}
-  m_GlobalIlluminationMeshLod: 0
-  m_SortingLayerID: 0
-  m_SortingLayer: 0
-  m_SortingOrder: 0
-  m_MaskInteraction: 0
-  m_Sprite: {fileID: 4990307258683788602, guid: 367eee73b2a9248cba1af9f5174c11bc, type: 3}
-  m_Color: {r: 1, g: 1, b: 1, a: 1}
-  m_FlipX: 0
-  m_FlipY: 0
-  m_DrawMode: 0
-  m_Size: {x: 1, y: 1}
-  m_AdaptiveModeThreshold: 0.5
-  m_SpriteTileMode: 0
-  m_WasSpriteAssigned: 1
-  m_SpriteSortPoint: 0
---- !u!4 &2001308777
-Transform:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 2001308774}
-  serializedVersion: 2
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: 4.55, z: 0}
-  m_LocalScale: {x: 1, y: 1, z: 1}
-  m_ConstrainProportionsScale: 0
-  m_Children: []
-  m_Father: {fileID: 0}
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &2070798850
 GameObject:
   m_ObjectHideFlags: 0
@@ -30093,6 +29985,9 @@ MonoBehaviour:
   explodeOnSellEnabled: 0
   explodeOnSellDamage: 0
   explodeOnSellStunDuration: 0
+  luckMultiplier: 1
+  towerRotationSpeedBonus: 0
+  globalDamageMultiplier: 1
 --- !u!1660057539 &9223372036854775807
 SceneRoots:
   m_ObjectHideFlags: 0
@@ -30110,4 +30005,3 @@ SceneRoots:
   - {fileID: 1788956639}
   - {fileID: 1355556956}
   - {fileID: 92486299}
-  - {fileID: 2001308777}

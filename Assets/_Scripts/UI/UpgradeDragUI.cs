@@ -66,11 +66,18 @@ public class UpgradeDragUI : MonoBehaviour, IBeginDragHandler, IDragHandler, IEn
 
         if (card == null || SpinFortShopManager.Instance == null) return;
 
-        Tower targetTower = FindTowerUnderScreenPoint(eventData.position);
-        if (targetTower != null)
-            SpinFortShopManager.Instance.UseUpgradeOnTower(card, targetTower);
-        else if (!SpinFortShopManager.IsTowerTargetedUpgrade(card.rewardType))
+        bool isTowerTargeted = SpinFortShopManager.IsTowerTargetedUpgrade(card.rewardType);
+        Tower targetTower = isTowerTargeted ? FindTowerUnderScreenPoint(eventData.position) : null;
+
+        if (isTowerTargeted)
+        {
+            if (targetTower != null)
+                SpinFortShopManager.Instance.UseUpgradeOnTower(card, targetTower);
+        }
+        else
+        {
             SpinFortShopManager.Instance.UseUpgrade(card);
+        }
     }
 
     // Tower-targeted cards (attack speed/range/damage) are locked -- red --
@@ -88,14 +95,25 @@ public class UpgradeDragUI : MonoBehaviour, IBeginDragHandler, IDragHandler, IEn
     }
 
     // Mirrors TowerPlacementManager.TrySellTowerAtMouse's approach -- towers
-    // already carry the Collider2D it overlap-checks against.
+    // already carry the Collider2D it overlap-checks against. Restricted to
+    // the Towers layer so an enemy or projectile collider sitting at the same
+    // point (e.g. a unit walking past/through a placed tower) can't shadow
+    // the tower's own collider and make the drop silently miss.
+    //
+    // Lazily cached rather than a static field initializer -- Unity forbids
+    // calling LayerMask.NameToLayer (which GetMask uses internally) from a
+    // MonoBehaviour's static constructor/field initializer.
+    private static int towersLayerMask = -1;
+
     private Tower FindTowerUnderScreenPoint(Vector2 screenPoint)
     {
+        if (towersLayerMask == -1) towersLayerMask = LayerMask.GetMask("Towers");
+
         Camera cam = Camera.main;
         if (cam == null) return null;
 
         Vector2 worldPoint = cam.ScreenToWorldPoint(screenPoint);
-        Collider2D hit = Physics2D.OverlapPoint(worldPoint);
+        Collider2D hit = Physics2D.OverlapPoint(worldPoint, towersLayerMask);
         return hit != null ? hit.GetComponent<Tower>() : null;
     }
 }

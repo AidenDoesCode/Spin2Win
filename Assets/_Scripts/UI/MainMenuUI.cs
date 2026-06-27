@@ -21,6 +21,7 @@ public class MainMenuUI : MonoBehaviour
 
     private GameObject createdCanvasObj;
     private GameObject settingsPanelObj;
+    private GameObject instructionsPanelObj;
 
     private void Awake()
     {
@@ -137,20 +138,38 @@ public class MainMenuUI : MonoBehaviour
         highScoreRT.anchoredPosition = Vector2.zero;
         highScoreRT.sizeDelta = new Vector2(900f, 40f);
         var highScoreLabel = highScoreObj.AddComponent<TextMeshProUGUI>();
-        highScoreLabel.text = $"High Score: {ScoreManager.HighScore}";
+        highScoreLabel.text = $"High Score: ${ScoreManager.HighScore}";
         highScoreLabel.fontSize = 24;
         highScoreLabel.alignment = TextAlignmentOptions.Center;
         highScoreLabel.color = titleColor;
 
-        BuildButton(backdropObj.transform, "PlayButton", "PLAY", new Vector2(0.5f, 0.40f), OnPlayClicked);
-        BuildButton(backdropObj.transform, "SettingsButton", "SETTINGS", new Vector2(0.5f, 0.28f), OnSettingsClicked);
-        BuildButton(backdropObj.transform, "QuitButton", "QUIT", new Vector2(0.5f, 0.16f), OnQuitClicked);
+        GameObject highestRoundObj = new GameObject("HighestRoundLabel");
+        highestRoundObj.transform.SetParent(backdropObj.transform, false);
+        RectTransform highestRoundRT = highestRoundObj.AddComponent<RectTransform>();
+        highestRoundRT.anchorMin = highestRoundRT.anchorMax = new Vector2(0.5f, 0.44f);
+        highestRoundRT.pivot = new Vector2(0.5f, 0.5f);
+        highestRoundRT.anchoredPosition = Vector2.zero;
+        highestRoundRT.sizeDelta = new Vector2(900f, 40f);
+        var highestRoundLabel = highestRoundObj.AddComponent<TextMeshProUGUI>();
+        highestRoundLabel.text = $"Highest Round: {RoundManager.HighestRound}";
+        highestRoundLabel.fontSize = 24;
+        highestRoundLabel.alignment = TextAlignmentOptions.Center;
+        highestRoundLabel.color = titleColor;
+
+        BuildButton(backdropObj.transform, "PlayButton", "PLAY", new Vector2(0.5f, 0.34f), OnPlayClicked);
+        BuildButton(backdropObj.transform, "InstructionsButton", "HOW TO PLAY", new Vector2(0.5f, 0.24f), OnInstructionsClicked);
+        BuildButton(backdropObj.transform, "SettingsButton", "SETTINGS", new Vector2(0.5f, 0.14f), OnSettingsClicked);
+        BuildButton(backdropObj.transform, "QuitButton", "QUIT", new Vector2(0.5f, 0.05f), OnQuitClicked);
 
         settingsPanelObj = SettingsSliderUI.BuildVolumePanel(backdropObj.transform, new Vector2(0f, 40f), buttonColor);
         settingsPanelObj.SetActive(false);
+
+        instructionsPanelObj = InstructionsPanelUI.Build(backdropObj.transform, buttonColor);
+        instructionsPanelObj.SetActive(false);
     }
 
     private void OnSettingsClicked() => settingsPanelObj.SetActive(!settingsPanelObj.activeSelf);
+    private void OnInstructionsClicked() => instructionsPanelObj.SetActive(!instructionsPanelObj.activeSelf);
 
     private void BuildButton(Transform parent, string name, string text, Vector2 anchor, UnityEngine.Events.UnityAction onClick)
     {

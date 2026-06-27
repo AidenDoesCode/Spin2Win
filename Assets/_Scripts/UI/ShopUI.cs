@@ -364,29 +364,13 @@ public class ShopUI : MonoBehaviour
         borderRT.anchoredPosition = new Vector2(xPos, padding);
         borderRT.sizeDelta = new Vector2(cardWidth, cardHeight);
         Image borderImg = borderObj.AddComponent<Image>();
-        Color rarityColor = GetRarityColor(offer.rarity);
-        float glowIntensity = GetRarityGlowIntensity(offer.rarity);
-        BorderArt borderArt = GetBorderArt(offer.rarity);
 
-        if (borderArt != null && borderArt.animation != null)
-        {
-            if (borderArt.fallbackSprite != null) borderImg.sprite = borderArt.fallbackSprite;
-            borderImg.color = Color.white;
-            PlayBorderAnimation(borderObj, borderArt.animation);
-        }
-        else if (borderArt != null && borderArt.fallbackSprite != null)
-        {
-            borderImg.sprite = borderArt.fallbackSprite;
-            borderImg.color = Color.white;
-            if (glowIntensity > 0f)
-                rarityGlowRoutines.Add(StartCoroutine(RarityGlow(borderImg, Color.white, glowIntensity, GetRarityGlowSpeed(offer.rarity))));
-        }
-        else
-        {
-            borderImg.color = rarityColor;
-            if (glowIntensity > 0f)
-                rarityGlowRoutines.Add(StartCoroutine(RarityGlow(borderImg, rarityColor, glowIntensity, GetRarityGlowSpeed(offer.rarity))));
-        }
+        // Spinning cards cycle their border rarity art alongside the
+        // label/cost/icon below instead of jumping straight to the offer's
+        // true rarity, which used to spoil the result the instant the card
+        // appeared (border never changed while everything else span).
+        Coroutine[] glowRoutineHolder = new Coroutine[1];
+        ApplyBorderRarity(borderObj, borderImg, spin ? CardRarity.Common : offer.rarity, glowRoutineHolder);
 
         GameObject innerObj = new GameObject("Inner");
         innerObj.transform.SetParent(borderObj.transform, false);
@@ -396,10 +380,11 @@ public class ShopUI : MonoBehaviour
         innerRT.offsetMin = new Vector2(2f, 2f);
         innerRT.offsetMax = new Vector2(-2f, -2f);
         Image innerImg = innerObj.AddComponent<Image>();
-        Color baseCardColor = offer.rewardType == SpinFortRewardType.Tower ? towerCardColor : upgradeCardColor;
-        Sprite baseCardArt = offer.rewardType == SpinFortRewardType.Tower ? towerCardBackgroundArt : upgradeCardBackgroundArt;
-        innerImg.sprite = baseCardArt;
-        innerImg.color = isPurchased ? purchasedColor : (baseCardArt != null ? Color.white : baseCardColor);
+        // Same spoiler problem the border had: only set the true Tower-vs-
+        // Upgrade background once spinning is done. While spinning, start on
+        // a placeholder -- SpinThenReveal cycles it per tick alongside the
+        // label/cost/icon/border.
+        ApplyCardBackground(innerImg, spin ? SpinFortRewardType.FireRateBuff : offer.rewardType, isPurchased);
 
         GameObject iconObj = new GameObject("Icon");
         iconObj.transform.SetParent(innerObj.transform, false);
@@ -509,7 +494,7 @@ public class ShopUI : MonoBehaviour
             button.interactable = false;
             buttonLabel.text = "...";
             statsLabel.text = "";
-            Coroutine routine = StartCoroutine(SpinThenReveal(offer, index, isPurchased, canAfford, label, costLabel, iconImg, button, buttonLabel, statsLabel));
+            Coroutine routine = StartCoroutine(SpinThenReveal(offer, index, isPurchased, canAfford, label, costLabel, iconImg, button, buttonLabel, statsLabel, borderObj, borderImg, glowRoutineHolder, innerImg));
             itemSpinRoutines.Add(routine);
         }
         else
@@ -586,14 +571,77 @@ public class ShopUI : MonoBehaviour
         if (anim == null) anim = borderObj.AddComponent<Animation>();
 
         clip.legacy = true;
-        anim.AddClip(clip, clip.name);
+        if (anim.GetClip(clip.name) == null) anim.AddClip(clip, clip.name);
         anim.clip = clip;
         anim.wrapMode = WrapMode.Loop;
         anim.Play(clip.name);
     }
 
+    // Tower cards and upgrade cards use different background art/color --
+    // applied here so both the initial build and each spin tick can reuse it.
+    private void ApplyCardBackground(Image innerImg, SpinFortRewardType rewardType, bool isPurchased)
+    {
+        Color baseCardColor = rewardType == SpinFortRewardType.Tower ? towerCardColor : upgradeCardColor;
+        Sprite baseCardArt = rewardType == SpinFortRewardType.Tower ? towerCardBackgroundArt : upgradeCardBackgroundArt;
+        innerImg.sprite = baseCardArt;
+        innerImg.color = isPurchased ? purchasedColor : (baseCardArt != null ? Color.white : baseCardColor);
+    }
+
+    // Applies one rarity's border look (art/animation, or flat color + glow)
+    // to an already-built card border, swapping out whatever was there
+    // before. Used both for the final, true-rarity border and -- while the
+    // card is spinning -- for each randomly sampled rarity along the way, so
+    // the border visually cycles in lockstep with the label/cost/icon instead
+    // of sitting fixed on the real result for the whole spin.
+    private void ApplyBorderRarity(GameObject borderObj, Image borderImg, CardRarity rarity, Coroutine[] glowRoutineHolder)
+    {
+        if (glowRoutineHolder[0] != null)
+        {
+            StopCoroutine(glowRoutineHolder[0]);
+            glowRoutineHolder[0] = null;
+        }
+
+        Animation anim = borderObj.GetComponent<Animation>();
+        Color rarityColor = GetRarityColor(rarity);
+        float glowIntensity = GetRarityGlowIntensity(rarity);
+        BorderArt borderArt = GetBorderArt(rarity);
+
+        if (borderArt != null && borderArt.animation != null)
+        {
+            if (borderArt.fallbackSprite != null) borderImg.sprite = borderArt.fallbackSprite;
+            borderImg.color = Color.white;
+            PlayBorderAnimation(borderObj, borderArt.animation);
+        }
+        else
+        {
+            if (anim != null) anim.Stop();
+
+            if (borderArt != null && borderArt.fallbackSprite != null)
+            {
+                borderImg.sprite = borderArt.fallbackSprite;
+                borderImg.color = Color.white;
+                if (glowIntensity > 0f)
+                {
+                    glowRoutineHolder[0] = StartCoroutine(RarityGlow(borderImg, Color.white, glowIntensity, GetRarityGlowSpeed(rarity)));
+                    rarityGlowRoutines.Add(glowRoutineHolder[0]);
+                }
+            }
+            else
+            {
+                borderImg.sprite = null;
+                borderImg.color = rarityColor;
+                if (glowIntensity > 0f)
+                {
+                    glowRoutineHolder[0] = StartCoroutine(RarityGlow(borderImg, rarityColor, glowIntensity, GetRarityGlowSpeed(rarity)));
+                    rarityGlowRoutines.Add(glowRoutineHolder[0]);
+                }
+            }
+        }
+    }
+
     private IEnumerator SpinThenReveal(ShopCardSO offer, int index, bool isPurchased, bool canAfford,
-        TextMeshProUGUI label, TextMeshProUGUI costLabel, Image iconImg, Button button, TextMeshProUGUI buttonLabel, TextMeshProUGUI statsLabel)
+        TextMeshProUGUI label, TextMeshProUGUI costLabel, Image iconImg, Button button, TextMeshProUGUI buttonLabel, TextMeshProUGUI statsLabel,
+        GameObject borderObj, Image borderImg, Coroutine[] glowRoutineHolder, Image innerImg)
     {
         float duration = itemSpinBaseDuration + index * itemSpinStaggerPerCard;
         float elapsed = 0f;
@@ -622,6 +670,12 @@ public class ShopUI : MonoBehaviour
                     : (randomOffer.towerReward != null ? randomOffer.towerReward.icon : null);
                 iconImg.sprite = randomIcon;
                 iconImg.enabled = randomIcon != null;
+
+                if (borderObj != null && borderImg != null)
+                    ApplyBorderRarity(borderObj, borderImg, randomOffer.rarity, glowRoutineHolder);
+
+                if (innerImg != null)
+                    ApplyCardBackground(innerImg, randomOffer.rewardType, isPurchased);
             }
 
             elapsed += Time.deltaTime;
@@ -629,6 +683,10 @@ public class ShopUI : MonoBehaviour
         }
 
         if (label == null || costLabel == null || iconImg == null || button == null || buttonLabel == null) yield break;
+        if (borderObj != null && borderImg != null)
+            ApplyBorderRarity(borderObj, borderImg, offer.rarity, glowRoutineHolder);
+        if (innerImg != null)
+            ApplyCardBackground(innerImg, offer.rewardType, isPurchased);
         ApplyFinalCardContent(offer, isPurchased, canAfford, label, costLabel, iconImg, button, buttonLabel, statsLabel);
     }
 

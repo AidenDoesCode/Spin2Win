@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::ShopCardSO
   label: Bioluminescent Focus
   rarity: 2
-  weight: 15
+  weight: 6
   cost: 45
   rewardType: 9
   intValue: 0

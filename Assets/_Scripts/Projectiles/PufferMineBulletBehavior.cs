@@ -23,9 +23,35 @@ public class PufferMineBulletBehavior : BulletBehavior
     {
         base.Update();
 
+        // The mine only used to detonate on a direct capsule-collider hit, so
+        // a target picked up near the edge of the tower's range -- the
+        // longest flight, giving it the most time to walk off the straight
+        // line the mine was aimed along -- would sail right past without
+        // ever overlapping anything, only exploding (far away, after the
+        // fuse) once it was already long gone. Checking proximity every
+        // frame lets the mine go off as soon as it's within its own splash
+        // radius of any enemy, which is a much larger and more forgiving
+        // margin than the bullet's actual collider.
+        if (IsAnyEnemyWithinSplashRadius())
+        {
+            Detonate();
+            return;
+        }
+
         fuseTimer -= Time.deltaTime;
         if (fuseTimer <= 0f)
             Detonate();
+    }
+
+    private bool IsAnyEnemyWithinSplashRadius()
+    {
+        var hits = Physics2D.OverlapCircleAll(transform.position, splashRadius);
+        for (int i = 0; i < hits.Length; i++)
+        {
+            if (hits[i] != null && hits[i].GetComponent<Enemy>() != null)
+                return true;
+        }
+        return false;
     }
 
     protected override void OnHitEnemy(Enemy enemy)

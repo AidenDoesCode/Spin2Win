@@ -10,17 +10,17 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 9721b95c021e43cab32ddc8359c7831e, type: 3}
-  m_Name: PufferHuffer
+  m_Name: CoralBarricade
   m_EditorClassIdentifier: Assembly-CSharp::ShopCardSO
-  label: 'Puffer Huffer '
+  label: Coral Barricade
   rarity: 1
-  weight: 18
-  cost: 55
-  rewardType: 6
-  intValue: 0
-  floatValue: 0
+  weight: 12
+  cost: 90
+  rewardType: 15
+  intValue: 5
+  floatValue: 1.15
   duration: 0
-  towerReward: {fileID: 11400000, guid: 96a06bb3685f34b3a8584eaf6a88d42b, type: 2}
-  icon: {fileID: 0}
-  description: Inwardly panicking pufferfish that aggressively hurls inflated, spiky
-    clones of itself onto the path.
+  towerReward: {fileID: 0}
+  icon: {fileID: -120470102690499844, guid: a286fe6cd10fd4dcd8da138de6149905, type: 3}
+  description: Encrusts defenses with defensive calcification, permanently bolstering
+    structure health by +5.

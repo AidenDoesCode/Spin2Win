@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::ShopCardSO
   label: Coral Overgrowth
   rarity: 0
-  weight: 40
+  weight: 30
   cost: 15
   rewardType: 7
   intValue: 5

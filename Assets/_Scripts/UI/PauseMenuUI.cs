@@ -22,6 +22,7 @@ public class PauseMenuUI : MonoBehaviour
     private bool isPaused = false;
     private GameObject panelObj;
     private GameObject settingsPanelObj;
+    private GameObject instructionsPanelObj;
 
     private void Awake()
     {
@@ -45,7 +46,18 @@ public class PauseMenuUI : MonoBehaviour
         Time.timeScale = paused ? 0f : GameSpeedUI.CurrentSpeed;
         SetVisualsActive(paused);
         MusicManager.Instance?.SetPauseMuffled(paused);
-        if (!paused) settingsPanelObj.SetActive(false);
+
+        // The buy-phase countdown runs on Time.unscaledDeltaTime (so the 2x/4x
+        // game-speed toggle doesn't also speed it up), which means it never
+        // noticed Time.timeScale = 0 -- it kept ticking down in real time
+        // while "paused". RoundManager's timerPaused flag is the actual gate
+        // for that loop, same one TowerDetailPopupUI already uses.
+        RoundManager.Instance?.SetTimerPaused(paused);
+        if (!paused)
+        {
+            settingsPanelObj.SetActive(false);
+            instructionsPanelObj.SetActive(false);
+        }
     }
 
     private void EnsureCanvasExists()
@@ -73,16 +85,21 @@ public class PauseMenuUI : MonoBehaviour
     private void OnRestartClicked()
     {
         Time.timeScale = 1f;
+        RoundManager.Instance?.ResetManagerForRestart();
+        BaseHealth.Instance?.ResetForRestart();
         SceneManager.LoadScene(SceneManager.GetActiveScene().buildIndex);
     }
 
     private void OnMainMenuClicked()
     {
         Time.timeScale = 1f;
+        RoundManager.Instance?.ResetManagerForRestart();
+        BaseHealth.Instance?.ResetForRestart();
         SceneManager.LoadScene(mainMenuSceneName);
     }
 
     private void OnSettingsClicked() => settingsPanelObj.SetActive(!settingsPanelObj.activeSelf);
+    private void OnInstructionsClicked() => instructionsPanelObj.SetActive(!instructionsPanelObj.activeSelf);
 
     private void BuildUI()
     {
@@ -100,7 +117,7 @@ public class PauseMenuUI : MonoBehaviour
         panelObj.transform.SetParent(transform, false);
         RectTransform panelRT = panelObj.AddComponent<RectTransform>();
         panelRT.anchorMin = panelRT.anchorMax = panelRT.pivot = new Vector2(0.5f, 0.5f);
-        panelRT.sizeDelta = new Vector2(420f, 420f);
+        panelRT.sizeDelta = new Vector2(420f, 490f);
         Image panelImg = panelObj.AddComponent<Image>();
         panelImg.color = panelColor;
 
@@ -120,12 +137,18 @@ public class PauseMenuUI : MonoBehaviour
         title.fontStyle = FontStyles.Bold;
         AddShadow(title);
 
-        BuildButton(panelObj.transform, "ResumeButton", "Resume", new Vector2(0f, 280f), OnResumeClicked);
-        BuildButton(panelObj.transform, "SettingsButton", "Settings", new Vector2(0f, 210f), OnSettingsClicked);
-        BuildButton(panelObj.transform, "RestartButton", "Restart", new Vector2(0f, 140f), OnRestartClicked);
-        BuildButton(panelObj.transform, "MainMenuButton", "Main Menu", new Vector2(0f, 70f), OnMainMenuClicked);
+        BuildButton(panelObj.transform, "ResumeButton", "Resume", new Vector2(0f, 315f), OnResumeClicked);
+        BuildButton(panelObj.transform, "InstructionsButton", "How To Play", new Vector2(0f, 245f), OnInstructionsClicked);
+        BuildButton(panelObj.transform, "SettingsButton", "Settings", new Vector2(0f, 175f), OnSettingsClicked);
+        BuildButton(panelObj.transform, "RestartButton", "Restart", new Vector2(0f, 105f), OnRestartClicked);
+        BuildButton(panelObj.transform, "MainMenuButton", "Main Menu", new Vector2(0f, 35f), OnMainMenuClicked);
 
         BuildSettingsPanel(panelObj.transform);
+
+        // Parented to the full-screen root (not the small pause panel) so the
+        // instructions panel has room to lay out a proper how-to-play readout.
+        instructionsPanelObj = InstructionsPanelUI.Build(transform, buttonColor);
+        instructionsPanelObj.SetActive(false);
     }
 
     private void BuildSettingsPanel(Transform parent)

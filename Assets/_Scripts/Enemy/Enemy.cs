@@ -196,7 +196,37 @@ public class Enemy : MonoBehaviour
 
     // Called by SpawnManager right after Instantiate, before Start runs, so a
     // shared enemy prefab can be spawned as any EnemySO type from the budget pool.
-    public void Configure(EnemySO enemyData) => data = enemyData;
+    public void Configure(EnemySO enemyData)
+    {
+        data = enemyData;
+        if (data != null && !Mathf.Approximately(data.extraVisualScale, 1f))
+            ApplyExtraVisualScale(data.extraVisualScale);
+    }
+
+    // Bosses reuse the same shared enemy prefab as everything else, so this
+    // is the only way to make one look bigger than normal without a separate
+    // prefab -- mirrors Awake's own scale-up/collider-shrink compensation so
+    // the world-space hitbox keeps tracking the (now even bigger) sprite.
+    private void ApplyExtraVisualScale(float extraScale)
+    {
+        transform.localScale *= extraScale;
+
+        if (col is CapsuleCollider2D capsule)
+        {
+            capsule.size /= extraScale;
+            capsule.offset /= extraScale;
+        }
+        else if (col is CircleCollider2D circle)
+        {
+            circle.radius /= extraScale;
+            circle.offset /= extraScale;
+        }
+        else if (col is BoxCollider2D box)
+        {
+            box.size /= extraScale;
+            box.offset /= extraScale;
+        }
+    }
 
     // Riptide Counter-Current's stun. Freezes movement (but not death/damage)
     // for the given duration; stacking calls only extend, never shorten it.
@@ -263,8 +293,8 @@ public class Enemy : MonoBehaviour
         {
             ScoreManager.Instance.AddScore(data.scoreValue);
 
-            // ADDED: floating "+Ng" gold popup over the kill spot.
-            FloatingText.Spawn(transform.position, $"+{data.scoreValue}g", new Color(1f, 0.8431f, 0f));
+            // ADDED: floating "+$N" gold popup over the kill spot.
+            FloatingText.Spawn(transform.position, $"+${data.scoreValue}", new Color(1f, 0.8431f, 0f));
         }
         if (deathSound != null)
         {

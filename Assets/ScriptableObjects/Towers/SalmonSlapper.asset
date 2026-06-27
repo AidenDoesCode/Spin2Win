@@ -20,7 +20,7 @@ MonoBehaviour:
   description: A mechanical arm holding a raw salmon that rapidly slaps enemies silly
     as they pass right in front of it.
   rotationSpeed: 180
-  fireRate: 2.5
+  fireRate: 1.5
   projectileSpeed: 15
   damage: 2
   fireArcDegrees: 270

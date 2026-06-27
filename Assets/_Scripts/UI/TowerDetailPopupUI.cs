@@ -1,3 +1,4 @@
+using System;
 using UnityEngine;
 using UnityEngine.UI;
 using TMPro;
@@ -8,6 +9,11 @@ using TMPro;
 public class TowerDetailPopupUI : MonoBehaviour
 {
     public static TowerDetailPopupUI Instance { get; private set; }
+
+    // Lets other full-screen-aware UI (e.g. BaseHealthBarUI) reposition itself
+    // out from under this popup's backdrop while it's open.
+    public event Action Shown;
+    public event Action Hidden;
 
     [Header("Layout")]
     public float panelWidth = 420f;
@@ -69,6 +75,7 @@ public class TowerDetailPopupUI : MonoBehaviour
         gameObject.SetActive(true);
         transform.SetAsLastSibling();
         RoundManager.Instance?.SetTimerPaused(true);
+        Shown?.Invoke();
     }
 
     // Placed-tower overload -- shows the tower's current (instance-bonus-
@@ -95,6 +102,7 @@ public class TowerDetailPopupUI : MonoBehaviour
         RoundManager.Instance?.SetTimerPaused(true);
 
         TowerPlacementManager.Instance?.ShowRangeRingAt(tower.transform.position, tower.EffectiveRange);
+        Shown?.Invoke();
     }
 
     // Upgrade-card overload -- same popup, just a different stat block since
@@ -118,12 +126,14 @@ public class TowerDetailPopupUI : MonoBehaviour
         gameObject.SetActive(true);
         transform.SetAsLastSibling();
         RoundManager.Instance?.SetTimerPaused(true);
+        Shown?.Invoke();
     }
 
     public void Hide()
     {
         gameObject.SetActive(false);
         RoundManager.Instance?.SetTimerPaused(false);
+        Hidden?.Invoke();
 
         if (showingPlacedTowerRange)
         {
@@ -167,12 +177,15 @@ public class TowerDetailPopupUI : MonoBehaviour
             ? "Attack: Melee"
             : $"Projectile Speed: {data.projectileSpeed:0.##}";
 
+        string rotationLine = $"Rotation Speed: {tower.EffectiveRotationSpeed:0.##}°/s";
+        if (!Mathf.Approximately(tower.EffectiveRotationSpeed, data.rotationSpeed)) rotationLine += $" (base {data.rotationSpeed:0.##})";
+
         return
             $"{rangeLine}\n" +
             $"{fireRateLine}\n" +
             $"{damageLine}\n" +
             $"{attackLine}\n" +
-            $"Rotation Speed: {data.rotationSpeed:0.##}°/s";
+            $"{rotationLine}";
     }
 
     public static string BuildStatsText(ShopCardSO card)
@@ -181,7 +194,7 @@ public class TowerDetailPopupUI : MonoBehaviour
         switch (card.rewardType)
         {
             case SpinFortRewardType.Points:
-                effectLine = $"Gold: +{card.intValue}";
+                effectLine = $"Gold: +${card.intValue}";
                 break;
             case SpinFortRewardType.FireRateBuff:
                 effectLine = $"Fire Rate: x{card.floatValue:0.##} for {card.duration:0.##}s";
@@ -214,13 +227,28 @@ public class TowerDetailPopupUI : MonoBehaviour
                 effectLine = $"Tower Damage: +{card.intValue} (drag onto a tower)";
                 break;
             case SpinFortRewardType.GoldPerRoundGain:
-                effectLine = $"Gold/Round: +{card.intValue}";
+                effectLine = $"Gold/Round: +${card.intValue}";
                 break;
             case SpinFortRewardType.AllInMultiplier:
                 effectLine = $"Strongest Tower Damage: x{card.floatValue:0.##}\nMax Base Health: -{card.intValue}";
                 break;
             case SpinFortRewardType.TowersExplodeOnDeath:
                 effectLine = $"Sell Explosion: {card.floatValue:0.##} dmg, {card.duration:0.##}s stun";
+                break;
+            case SpinFortRewardType.MaxTowerHealthBuff:
+                effectLine = $"Base Max Health: +{card.intValue}";
+                break;
+            case SpinFortRewardType.LuckBuff:
+                effectLine = $"Rare Shop Odds: x{card.floatValue:0.##} per rarity tier";
+                break;
+            case SpinFortRewardType.TowerRotationSpeedBuff:
+                effectLine = $"Tower Rotation Speed: +{card.floatValue:0.##}°/s";
+                break;
+            case SpinFortRewardType.GlobalTowerDamageMultiplier:
+                effectLine = $"Tower Damage: x{card.floatValue:0.##}";
+                break;
+            case SpinFortRewardType.TowerDamageMultiplier:
+                effectLine = $"Tower Damage: x{card.floatValue:0.##} (drag onto a tower)";
                 break;
             default:
                 effectLine = "";

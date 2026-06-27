@@ -22,4 +22,10 @@ public class EnemySO : ScriptableObject
     public AnimationClip impactAnimation;
     [Tooltip("Plays once when this enemy dies, before it's removed.")]
     public AnimationClip deathAnimation;
+
+    [Header("Boss")]
+    [Tooltip("Purely informational -- lets UI (e.g. a boss-round banner) check this type without string-matching enemyName.")]
+    public bool isBoss = false;
+    [Tooltip("Extra multiplier on top of the shared enemy prefab's base visual scale, so a boss can look bigger without needing separate art/prefab.")]
+    [Min(0.01f)] public float extraVisualScale = 1f;
 }

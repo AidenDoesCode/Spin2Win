@@ -19,8 +19,8 @@ MonoBehaviour:
   icon: {fileID: 8988524528233069240, guid: b4693a4a14e964724a8d29076decffe0, type: 3}
   description: An incredibly caffeinated electric eel coiled around a battery, zapping
     anything that walks by.
-  rotationSpeed: 360
-  fireRate: 3
+  rotationSpeed: 270
+  fireRate: 2.5
   projectileSpeed: 20
   damage: 1
   fireArcDegrees: 270

@@ -82,15 +82,12 @@ public class GameOverUI : MonoBehaviour
 
     private void EnsureCanvasExists()
     {
-        // UI elements REQUIRE a Canvas component somewhere above them to render.
-        // If this object or its parents don't have one, we force-attach it.
         Canvas canvas = GetComponentInParent<Canvas>();
         if (canvas == null)
         {
-            Debug.LogWarning($"[GameOverUI] '{gameObject.name}' is not inside a Canvas! Automatically converting this object into a screen-space Canvas.");
             canvas = gameObject.AddComponent<Canvas>();
             canvas.renderMode = RenderMode.ScreenSpaceOverlay;
-            canvas.sortingOrder = 999; // Force it to render on top of absolutely everything
+            canvas.sortingOrder = 999; 
             gameObject.AddComponent<CanvasScaler>();
             gameObject.AddComponent<GraphicRaycaster>();
         }
@@ -109,17 +106,42 @@ public class GameOverUI : MonoBehaviour
 
     private void OnRestartClicked()
     {
+        Debug.Log("[GameOverUI] Restart Button Clicked! Reloading scene...");
         Time.timeScale = 1f;
+        
+        // Clear old Singleton states manually before engine reload to prevent scene ghost references
+        if (RoundManager.Instance != null)
+        {
+            RoundManager.Instance.ResetManagerForRestart();
+        }
+        if (BaseHealth.Instance != null)
+        {
+            BaseHealth.Instance.ResetForRestart();
+        }
+
         SceneManager.LoadScene(SceneManager.GetActiveScene().buildIndex);
     }
 
     private void OnMainMenuClicked()
     {
         Time.timeScale = 1f;
+
+        // Same "ghost reference" cleanup as Restart above -- without it the
+        // round counter carries the just-finished run's number into the next
+        // one instead of resetting to 1.
+        if (RoundManager.Instance != null)
+        {
+            RoundManager.Instance.ResetManagerForRestart();
+        }
+        if (BaseHealth.Instance != null)
+        {
+            BaseHealth.Instance.ResetForRestart();
+        }
+
         SceneManager.LoadScene(mainMenuSceneName);
     }
 
-private void BuildUI()
+    private void BuildUI()
     {
         RectTransform rootRT = GetComponent<RectTransform>();
         if (rootRT == null) rootRT = gameObject.AddComponent<RectTransform>();
@@ -131,23 +153,21 @@ private void BuildUI()
         if (backdrop == null) backdrop = gameObject.AddComponent<Image>();
         backdrop.color = backdropColor;
 
-        // --- THE MAIN PANEL CONTAINER ---
         GameObject panelObj = new GameObject("Panel");
         panelObj.transform.SetParent(transform, false);
         RectTransform panelRT = panelObj.AddComponent<RectTransform>();
         panelRT.anchorMin = panelRT.anchorMax = panelRT.pivot = new Vector2(0.5f, 0.5f);
-        panelRT.sizeDelta = new Vector2(540f, 380f); // Slightly larger to give elements breathing room
+        panelRT.sizeDelta = new Vector2(540f, 380f); 
         Image panelImg = panelObj.AddComponent<Image>();
         panelImg.color = panelColor;
 
-        // --- THE GAME OVER TITLE ---
         GameObject titleObj = new GameObject("Title");
         titleObj.transform.SetParent(panelObj.transform, false);
         RectTransform titleRT = titleObj.AddComponent<RectTransform>();
-        titleRT.anchorMin = new Vector2(0f, 1f); // Anchor to top of panel
+        titleRT.anchorMin = new Vector2(0f, 1f); 
         titleRT.anchorMax = new Vector2(1f, 1f);
         titleRT.pivot = new Vector2(0.5f, 1f);
-        titleRT.anchoredPosition = new Vector2(0f, -40f); // Positioned near the top edge
+        titleRT.anchoredPosition = new Vector2(0f, -40f); 
         titleRT.sizeDelta = new Vector2(0f, 70f);
         var title = titleObj.AddComponent<TextMeshProUGUI>();
         title.text = "GAME OVER";
@@ -155,24 +175,22 @@ private void BuildUI()
         title.alignment = TextAlignmentOptions.Center;
         title.color = titleColor;
         title.fontStyle = FontStyles.Bold;
-        AddShadow(title); // ADDED
+        AddShadow(title); 
 
-        // --- THE SCORE LABEL (FINAL GOLD) ---
         GameObject scoreObj = new GameObject("Score");
         scoreObj.transform.SetParent(panelObj.transform, false);
         RectTransform scoreRT = scoreObj.AddComponent<RectTransform>();
-        scoreRT.anchorMin = new Vector2(0f, 0.5f); // Anchor directly to the center
+        scoreRT.anchorMin = new Vector2(0f, 0.5f); 
         scoreRT.anchorMax = new Vector2(1f, 0.5f);
         scoreRT.pivot = new Vector2(0.5f, 0.5f);
-        scoreRT.anchoredPosition = new Vector2(0f, 10f); // Pushed slightly up from true center
+        scoreRT.anchoredPosition = new Vector2(0f, 10f); 
         scoreRT.sizeDelta = new Vector2(0f, 50f);
         scoreLabel = scoreObj.AddComponent<TextMeshProUGUI>();
         scoreLabel.fontSize = 28;
         scoreLabel.alignment = TextAlignmentOptions.Center;
         scoreLabel.color = Color.white;
-        AddShadow(scoreLabel); // ADDED
+        AddShadow(scoreLabel); 
 
-        // --- THE HIGH SCORE LABEL ---
         GameObject highScoreObj = new GameObject("HighScore");
         highScoreObj.transform.SetParent(panelObj.transform, false);
         RectTransform highScoreRT = highScoreObj.AddComponent<RectTransform>();
@@ -187,8 +205,7 @@ private void BuildUI()
         highScoreLabel.color = buttonColor;
         AddShadow(highScoreLabel);
 
-        // --- THE ACTION BUTTONS ---
-        // Placed along the bottom row with safe vertical padding (+50f offset from floor)
+        // FIX: Rebuilt buttons explicitly passing references down seamlessly
         BuildButton(panelObj.transform, "RestartButton", "Restart", new Vector2(-130f, 50f), OnRestartClicked);
         BuildButton(panelObj.transform, "MainMenuButton", "Main Menu", new Vector2(130f, 50f), OnMainMenuClicked);
         
@@ -205,7 +222,9 @@ private void BuildUI()
         buttonRT.sizeDelta = new Vector2(220f, 70f);
         Image buttonImg = buttonObj.AddComponent<Image>();
         buttonImg.color = buttonColor;
+        
         Button button = buttonObj.AddComponent<Button>();
+        button.onClick.RemoveAllListeners();
         button.onClick.AddListener(onClick);
 
         GameObject labelObj = new GameObject("Label");
@@ -219,11 +238,9 @@ private void BuildUI()
         label.fontSize = 24;
         label.alignment = TextAlignmentOptions.Center;
         label.color = Color.black;
-        AddShadow(label); // ADDED
+        AddShadow(label); 
     }
 
-    // ADDED: attaches and enables a PixelTextShadow on the given text so every
-    // label built by this UI gets the crisp pixel-art drop shadow automatically.
     private void AddShadow(TextMeshProUGUI text)
     {
         if (text == null) return;

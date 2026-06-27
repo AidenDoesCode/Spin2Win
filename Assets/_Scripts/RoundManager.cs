@@ -37,8 +37,23 @@ public class RoundManager : MonoBehaviour
     [Tooltip("If true, automatically end the player turn once a round's enemies are spawned so enemies will act immediately")]
     public bool autoStartEnemyPhaseAfterSpawn = true;
 
+    [Header("Boss Rounds")]
+    [Tooltip("Every Nth round spawns the boss enemy below in addition to the normal wave. 0 disables boss rounds.")]
+    [Min(0)] public int bossRoundInterval = 10;
+    [Tooltip("Enemy spawned on every boss round (e.g. Mega Anchor Shark) -- separate from SpawnManager.enemyPool so it never gets pulled into a normal wave's random budget roll.")]
+    public EnemySO bossEnemy;
+
+    public bool IsBossRound(int round) => bossRoundInterval > 0 && bossEnemy != null && round % bossRoundInterval == 0;
+
+    [Tooltip("Fires right as a boss round's enemies start spawning, so UI (e.g. a 'BOSS ROUND' banner) can react.")]
+    public event Action<int> BossRoundStarted;
+
     public int CurrentRound { get; private set; }
     public int EnemiesRemaining { get; private set; }
+
+    private const string HighestRoundKey = "Spin2Win_HighestRound";
+    public static int HighestRound { get; private set; }
+    public static event Action<int> HighestRoundChanged;
 
     public event Action<int> RoundStarted;
     public event Action<int> RoundFinished;
@@ -69,8 +84,20 @@ public class RoundManager : MonoBehaviour
         if (Instance == null) Instance = this;
         else Destroy(gameObject);
 
+        HighestRound = PlayerPrefs.GetInt(HighestRoundKey, 0);
+
         audioSource = gameObject.AddComponent<AudioSource>();
         audioSource.playOnAwake = false;
+    }
+
+    private static void CheckHighestRound(int round)
+    {
+        if (round <= HighestRound) return;
+
+        HighestRound = round;
+        PlayerPrefs.SetInt(HighestRoundKey, HighestRound);
+        PlayerPrefs.Save();
+        HighestRoundChanged?.Invoke(HighestRound);
     }
 
     void OnDestroy()
@@ -137,40 +164,47 @@ public class RoundManager : MonoBehaviour
         }
     }
 
-private IEnumerator WaitForContinueOrTimeout()
-{
-    float remaining = timeBetweenRounds;
-    bool expiredFired = false;
-    SetupTimerTick?.Invoke(remaining);
-
-    while (waitingForPlayerContinue)
+    private IEnumerator WaitForContinueOrTimeout()
     {
-        if (BaseHealth.Instance != null && BaseHealth.Instance.IsDead)
-            yield break;
-
-        if (!timerPaused)
-        {
-            // FIX: Use Time.unscaledDeltaTime instead of Time.deltaTime
-            // so the buy-phase timer ignores the GameSpeedUI multiplier.
-            remaining = Mathf.Max(0f, remaining - Time.unscaledDeltaTime);
-
-            if (remaining <= 0f && !expiredFired)
-            {
-                expiredFired = true;
-                SetupTimerExpired?.Invoke();
-            }
-        }
+        float remaining = timeBetweenRounds;
+        bool expiredFired = false;
         SetupTimerTick?.Invoke(remaining);
 
-        yield return null;
+        while (waitingForPlayerContinue)
+        {
+            if (BaseHealth.Instance != null && BaseHealth.Instance.IsDead)
+                yield break;
+
+            if (!timerPaused)
+            {
+                // FIX: Use Time.unscaledDeltaTime instead of Time.deltaTime
+                // so the buy-phase timer ignores the GameSpeedUI multiplier.
+                remaining = Mathf.Max(0f, remaining - Time.unscaledDeltaTime);
+
+                if (remaining <= 0f && !expiredFired)
+                {
+                    expiredFired = true;
+                    SetupTimerExpired?.Invoke();
+                }
+            }
+            SetupTimerTick?.Invoke(remaining);
+
+            yield return null;
+        }
     }
-}
 
     private IEnumerator StartRound()
     {
         CurrentRound++;
         roundActive = true;
+        CheckHighestRound(CurrentRound);
         RoundStarted?.Invoke(CurrentRound);
+
+        // Fire BossRoundStarted event if this is verified to be a boss round
+        if (IsBossRound(CurrentRound))
+        {
+            BossRoundStarted?.Invoke(CurrentRound);
+        }
         
         // Safety check for SfxSettings dependency compatibility
         if (roundStartSound != null) 
@@ -194,6 +228,12 @@ private IEnumerator WaitForContinueOrTimeout()
         {
             List<EnemySO> wave = spawner.GenerateWave(roundBudget);
             Debug.Log($"RoundManager: Round {CurrentRound} budget={roundBudget}, wave size={wave.Count}");
+
+            // If it's a boss round, add the unique boss enemy directly to the spawn sequence
+            if (IsBossRound(CurrentRound))
+            {
+                wave.Insert(0, bossEnemy);
+            }
 
             foreach (EnemySO enemyData in wave)
             {
@@ -273,12 +313,18 @@ private IEnumerator WaitForContinueOrTimeout()
     }
 
     public void ResetManagerForRestart()
-{
-    CurrentRound = 0; // or 1, depending on your setup
-    EnemiesRemaining = 0; 
-    
-    // Fire the event immediately so the UI clears out the old text
-    RoundUpdated?.Invoke(CurrentRound, EnemiesRemaining);
-}
+    {
+        StopAllCoroutines();
+
+        CurrentRound = 0;
+        EnemiesRemaining = 0;
+        roundActive = false;
+        waitingForPlayerContinue = true;
+        timerPaused = false;
+        bonusBudgetNextRound = 0;
+
+        RoundUpdated?.Invoke(CurrentRound, EnemiesRemaining);
+        StartCoroutine(RoundLoop());
+    }
     public bool IsRoundActive() => roundActive;
 }

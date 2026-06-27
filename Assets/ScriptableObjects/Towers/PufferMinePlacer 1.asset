@@ -20,8 +20,8 @@ MonoBehaviour:
   description: Inwardly panicking pufferfish that aggressively hurls inflated, spiky
     clones of itself onto the path.
   rotationSpeed: 240
-  fireRate: 0.8
-  projectileSpeed: 2
+  fireRate: 0.5
+  projectileSpeed: 30
   damage: 3
   fireArcDegrees: 360
   isMelee: 0

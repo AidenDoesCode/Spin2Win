@@ -38,6 +38,12 @@ public class BaseHealthBarUI : MonoBehaviour
     private TextMeshProUGUI numberLabel;
     private bool shopPinned;
 
+    // Counts how many full-screen overlays (shop, tower/card detail popup)
+    // currently want the bar pinned out of the way -- ref-counted so e.g.
+    // closing the detail popup while the shop is still open doesn't
+    // prematurely snap the bar back to its default top-center spot.
+    private int pinRequests;
+
     private void Awake()
     {
         BuildBar();
@@ -79,6 +85,15 @@ public class BaseHealthBarUI : MonoBehaviour
             shop.ShopClosed += OnShopClosed;
             if (shop.IsOpen) OnShopOpened();
         }
+
+        // Same pinned-corner treatment whenever the tower/card detail popup
+        // (the full-screen modal you get from clicking a tower or an upgrade
+        // card) is open, so the bar never sits underneath it either.
+        if (TowerDetailPopupUI.Instance != null)
+        {
+            TowerDetailPopupUI.Instance.Shown += OnOverlayShown;
+            TowerDetailPopupUI.Instance.Hidden += OnOverlayHidden;
+        }
     }
 
     private void OnDestroy()
@@ -89,16 +104,28 @@ public class BaseHealthBarUI : MonoBehaviour
             shop.ShopOpened -= OnShopOpened;
             shop.ShopClosed -= OnShopClosed;
         }
+        if (TowerDetailPopupUI.Instance != null)
+        {
+            TowerDetailPopupUI.Instance.Shown -= OnOverlayShown;
+            TowerDetailPopupUI.Instance.Hidden -= OnOverlayHidden;
+        }
     }
+
+    private void OnShopOpened() => RequestPin();
+    private void OnShopClosed() => ReleasePin();
+    private void OnOverlayShown() => RequestPin();
+    private void OnOverlayHidden() => ReleasePin();
 
     // CHANGED: the bar used to hide entirely during the buy phase because its
     // default position overlapped the shop's title/cards. ShopUI's panel is
     // centered and content-sized though (only its translucent backdrop is
     // full-screen), so pinning the bar to a screen corner instead keeps it
     // visible without overlapping anything, while SetAsLastSibling guarantees
-    // it draws on top of the shop's panel.
-    private void OnShopOpened()
+    // it draws on top of the shop's panel (and the detail popup, which also
+    // requests the pin while it's open).
+    private void RequestPin()
     {
+        pinRequests++;
         shopPinned = true;
         if (borderRT == null) return;
 
@@ -107,8 +134,11 @@ public class BaseHealthBarUI : MonoBehaviour
         borderRT.anchoredPosition = new Vector2(20f, -20f);
     }
 
-    private void OnShopClosed()
+    private void ReleasePin()
     {
+        pinRequests = Mathf.Max(0, pinRequests - 1);
+        if (pinRequests > 0) return;
+
         shopPinned = false;
         if (borderRT == null) return;
 

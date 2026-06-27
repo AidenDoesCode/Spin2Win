@@ -20,7 +20,7 @@ MonoBehaviour:
   description: A bass fish mounted to a sub-woofer that drops heavy audio bass drops
     to blast enemies.
   rotationSpeed: 90
-  fireRate: 0.5
+  fireRate: 0.3
   projectileSpeed: 12
   damage: 5
   fireArcDegrees: 50

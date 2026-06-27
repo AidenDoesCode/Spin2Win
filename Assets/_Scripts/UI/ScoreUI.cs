@@ -22,11 +22,11 @@ public class ScoreUI : MonoBehaviour
         if (ScoreManager.Instance != null)
         {
             ScoreManager.Instance.ScoreChanged += OnScoreChanged;
-            scoreText.text = "Score: " + FormatScore(ScoreManager.Instance.Score);
+            scoreText.text = "Score: $" + FormatScore(ScoreManager.Instance.Score);
         }
         else
         {
-            scoreText.text = "Score: " + FormatScore(0);
+            scoreText.text = "Score: $" + FormatScore(0);
         }
     }
 
@@ -38,7 +38,7 @@ public class ScoreUI : MonoBehaviour
 
     void OnScoreChanged(int newScore)
     {
-        scoreText.text = "Score: " + FormatScore(newScore);
+        scoreText.text = "Score: $" + FormatScore(newScore);
     }
 
     private string FormatScore(int score)

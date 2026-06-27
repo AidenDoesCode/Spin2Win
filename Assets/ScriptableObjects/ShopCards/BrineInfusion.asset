@@ -10,17 +10,17 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 9721b95c021e43cab32ddc8359c7831e, type: 3}
-  m_Name: PufferHuffer
+  m_Name: BrineInfusion
   m_EditorClassIdentifier: Assembly-CSharp::ShopCardSO
-  label: 'Puffer Huffer '
-  rarity: 1
-  weight: 18
-  cost: 55
-  rewardType: 6
+  label: Brine Infusion
+  rarity: 3
+  weight: 3
+  cost: 125
+  rewardType: 19
   intValue: 0
-  floatValue: 0
+  floatValue: 1.2
   duration: 0
-  towerReward: {fileID: 11400000, guid: 96a06bb3685f34b3a8584eaf6a88d42b, type: 2}
-  icon: {fileID: 0}
-  description: Inwardly panicking pufferfish that aggressively hurls inflated, spiky
-    clones of itself onto the path.
+  towerReward: {fileID: 0}
+  icon: {fileID: 4479274044891850408, guid: a286fe6cd10fd4dcd8da138de6149905, type: 3}
+  description: Saturates a single weapon with corrosive deep-sea salts, permanently
+    amplifying that tower's damage by 1.2x. Drag onto a placed tower to apply.
