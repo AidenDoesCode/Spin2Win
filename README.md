@@ -4,6 +4,9 @@ This project is a game made using Unity for the game jam by Juniper Dev
 
 A 2D top-down wave-based tower defense game built in Unity/C#, designed around data-driven architecture, event-driven systems, and clean separation of concerns.
 
+<img width="1553" height="833" alt="Screenshot 2026-06-26 195358" src="https://github.com/user-attachments/assets/96d1c154-7369-4d81-83e1-8063d8be6829" />
+<img width="1087" height="726" alt="Screenshot 2026-06-26 195434" src="https://github.com/user-attachments/assets/1eb1f05f-b850-470d-bfe1-b0c071e7e982" />
+
 ## Overview
 
 Spin2Win explores core software engineering patterns through the lens of interactive systems development: ScriptableObject-based data architecture, singleton state management, event-driven UI, and modular runtime systems. Players spin a slot-machine shop to purchase towers and consumable upgrade cards, then defend a base against increasingly difficult enemy waves including boss rounds every 10 waves. While the end product is a game, the underlying focus is on writing maintainable, extensible C# systems.
@@ -199,7 +202,3 @@ https://aidenramm.itch.io/fin2win-tower-defense
 ---
 
 *Built by [Aiden Ramm/Artikos](https://github.com/AidenDoesCode)*
-
-
-<img width="1553" height="833" alt="Screenshot 2026-06-26 195358" src="https://github.com/user-attachments/assets/96d1c154-7369-4d81-83e1-8063d8be6829" />
-<img width="1087" height="726" alt="Screenshot 2026-06-26 195434" src="https://github.com/user-attachments/assets/1eb1f05f-b850-470d-bfe1-b0c071e7e982" />
